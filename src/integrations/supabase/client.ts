@@ -2,6 +2,11 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+// Preview-safe fallback. These values are public browser credentials; RLS remains
+// the authorization boundary. Server/service credentials must never be added here.
+const STAGING_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
+const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
+
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
@@ -32,9 +37,12 @@ function createSupabaseClient() {
   // Fall back to process.env for SSR (server-side rendering)
   // Vite only guarantees static replacement for direct property access.
   const serverEnv = typeof process !== 'undefined' ? process.env : undefined;
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || serverEnv?.SUPABASE_URL;
+  const SUPABASE_URL =
+    import.meta.env.VITE_SUPABASE_URL || serverEnv?.SUPABASE_URL || STAGING_SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || serverEnv?.SUPABASE_PUBLISHABLE_KEY;
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    serverEnv?.SUPABASE_PUBLISHABLE_KEY ||
+    STAGING_SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
