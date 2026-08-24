@@ -19,7 +19,13 @@ export const getSetupState = createServerFn({ method: "GET" }).handler(async () 
   const { count, error } = await supabaseAdmin
     .from("user_roles")
     .select("id", { count: "exact", head: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[Setup] Setup-state query failed", {
+      code: error.code,
+      message: error.message,
+    });
+    throw new Error("SETUP_STATE_UNAVAILABLE");
+  }
   return { needsSetup: (count ?? 0) === 0 };
 });
 
