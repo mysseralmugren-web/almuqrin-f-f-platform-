@@ -10,7 +10,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { authEmailToIdentifier, identifierToAuthEmail } from "@/lib/auth-identifier";
+import { authEmailToIdentifier, parseAuthIdentifier } from "@/lib/auth-identifier";
 
 export type Role = Database["public"]["Enums"]["app_role"];
 
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       typeof s.user.user_metadata?.username === "string"
         ? s.user.user_metadata.username.trim().toLowerCase()
         : "";
-    const username = metadataUsername || authEmailToIdentifier(s.user.email);
+    const username = metadataUsername || profile.email || profile.phone || s.user.phone || authEmailToIdentifier(s.user.email);
     const name = profile.full_name || username;
     setUser({
       id: s.user.id,
@@ -118,11 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const login = useCallback(async (identifier: string, password: string) => {
-    const email = identifierToAuthEmail(identifier);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const authIdentifier = parseAuthIdentifier(identifier);
+    const credentials = authIdentifier.kind === "phone"
+      ? { phone: authIdentifier.value, password }
+      : { email: authIdentifier.kind === "email" ? authIdentifier.value : authIdentifier.authEmail, password };
+    const { data, error } = await supabase.auth.signInWithPassword(credentials);
     if (error) throw error;
     const { data: profile, error: profileError } = await supabase
       .from("profiles")

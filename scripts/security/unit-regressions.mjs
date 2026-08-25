@@ -43,6 +43,12 @@ try {
     assert.throws(() => auth.identifierToAuthEmail("bad username"), /INVALID_USERNAME/);
   });
 
+  check("email and Saudi mobile identifiers are normalized for sign-in", () => {
+    assert.deepEqual(auth.parseManagerContactIdentifier(" Manager@Example.com "), { kind: "email", value: "manager@example.com" });
+    assert.deepEqual(auth.parseManagerContactIdentifier("0551234567"), { kind: "phone", value: "+966551234567" });
+    assert.throws(() => auth.parseManagerContactIdentifier("almuqrin_admin"), /INVALID_EMAIL_OR_PHONE/);
+  });
+
   const base = {
     kind: "website",
     companyId: "11111111-1111-1111-1111-111111111111",

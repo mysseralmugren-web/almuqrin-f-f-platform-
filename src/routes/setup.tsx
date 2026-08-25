@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { getSetupState, bootstrapFirstAdmin, BOOTSTRAP_ADMIN_USERNAME } from "@/lib/setup.functions";
+import { getSetupState, bootstrapFirstAdmin } from "@/lib/setup.functions";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/theme";
 
@@ -29,7 +29,7 @@ function SetupPage() {
   const checkState = useServerFn(getSetupState);
   const bootstrap = useServerFn(bootstrapFirstAdmin);
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
-  const [username, setUsername] = useState(BOOTSTRAP_ADMIN_USERNAME);
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [bootstrapToken, setBootstrapToken] = useState("");
   const [fullName, setFullName] = useState("");
@@ -42,18 +42,14 @@ function SetupPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (username.trim().toLowerCase() !== BOOTSTRAP_ADMIN_USERNAME) {
-      toast.error(t("اسم المستخدم غير مصرح له بإنشاء أول مدير", "This username is not allowed to create the first admin"));
-      return;
-    }
     if (password.length < 12) {
       toast.error(t("كلمة المرور 12 حرفاً على الأقل", "Password must be at least 12 characters"));
       return;
     }
     setLoading(true);
     try {
-      await bootstrap({ data: { username, password, bootstrapToken, fullName, companyNameAr } });
-      await login(username, password);
+      await bootstrap({ data: { identifier, password, bootstrapToken, fullName, companyNameAr } });
+      await login(identifier, password);
       toast.success(t("تم إنشاء حساب المدير", "Administrator created"));
       navigate({ to: "/settings" });
     } catch (err) {
@@ -97,8 +93,20 @@ function SetupPage() {
           ) : (
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="s-username">{t("اسم مستخدم المدير", "Administrator username")}</Label>
-                <Input id="s-username" dir="ltr" value={username} onChange={(e) => setUsername(e.target.value)} required />
+                <Label htmlFor="s-identifier">{t("البريد الإلكتروني أو رقم جوال المدير", "Administrator email or mobile number")}</Label>
+                <Input
+                  id="s-identifier"
+                  dir="ltr"
+                  inputMode="email"
+                  autoComplete="username"
+                  placeholder={t("name@company.com أو 05xxxxxxxx", "name@company.com or +9665xxxxxxxx")}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("سيُستخدم البريد أو الجوال نفسه لتسجيل الدخول لاحقاً.", "Use this same email or mobile number to sign in later.")}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="s-pass">{t("كلمة المرور", "Password")}</Label>

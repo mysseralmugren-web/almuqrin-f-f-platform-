@@ -1,12 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { identifierToAuthEmail } from "@/lib/auth-identifier";
-
-/** Public username is not an authorization factor; BOOTSTRAP_TOKEN is. */
-export const BOOTSTRAP_ADMIN_USERNAME = "almuqrin_admin";
+import { parseManagerContactIdentifier } from "@/lib/auth-identifier";
 
 const bootstrapSchema = z.object({
-  username: z.string().trim().min(3).max(64),
+  identifier: z.string().trim().min(8).max(320),
   password: z.string().min(12).max(128),
   bootstrapToken: z.string().min(32).max(512),
   fullName: z.string().trim().min(2).max(120),
@@ -39,11 +36,7 @@ export const bootstrapFirstAdmin = createServerFn({ method: "POST" })
     const suppliedDigest = createHash("sha256").update(data.bootstrapToken).digest();
     const expectedDigest = createHash("sha256").update(expectedToken).digest();
     if (!timingSafeEqual(suppliedDigest, expectedDigest)) throw new Error("BOOTSTRAP_NOT_AUTHORIZED");
-    if (data.username.trim().toLowerCase() !== BOOTSTRAP_ADMIN_USERNAME) {
-      throw new Error("BOOTSTRAP_USERNAME_NOT_ALLOWED");
-    }
-
-    const authEmail = identifierToAuthEmail(data.username);
+    const authIdentifier = parseManagerContactIdentifier(data.identifier);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -58,12 +51,14 @@ export const bootstrapFirstAdmin = createServerFn({ method: "POST" })
     let userId: string | null = null;
     let companyId: string | null = null;
     try {
-      const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: authEmail,
+      const createUserInput = {
         password: data.password,
-        email_confirm: true,
-        user_metadata: { full_name: data.fullName, username: BOOTSTRAP_ADMIN_USERNAME },
-      });
+        user_metadata: { full_name: data.fullName, login_identifier: authIdentifier.value },
+        ...(authIdentifier.kind === "email"
+          ? { email: authIdentifier.value, email_confirm: true }
+          : { phone: authIdentifier.value, phone_confirm: true }),
+      };
+      const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser(createUserInput);
       if (createError || !created.user) throw new Error(createError?.message ?? "USER_CREATE_FAILED");
       userId = created.user.id;
 
@@ -79,7 +74,8 @@ export const bootstrapFirstAdmin = createServerFn({ method: "POST" })
         id: userId,
         company_id: companyId,
         full_name: data.fullName,
-        email: "",
+        email: authIdentifier.kind === "email" ? authIdentifier.value : "",
+        phone: authIdentifier.kind === "phone" ? authIdentifier.value : null,
       });
       if (profileError) throw new Error(profileError.message);
 

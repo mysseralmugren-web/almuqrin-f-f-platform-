@@ -142,13 +142,15 @@ function LoginPage() {
 
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">{t("اسم المستخدم", "Username")}</Label>
+                  <Label htmlFor="username">{t("البريد الإلكتروني أو رقم الجوال", "Email or mobile number")}</Label>
                   <div className="relative">
                     <UserRound className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground ltr:left-3 rtl:right-3" />
                     <Input
                       id="username"
                       type="text"
+                      inputMode="email"
                       autoComplete="username"
+                      placeholder={t("name@company.com أو 05xxxxxxxx", "name@company.com or +9665xxxxxxxx")}
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
