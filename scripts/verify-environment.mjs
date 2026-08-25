@@ -32,8 +32,6 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-// VITE_SUPABASE_PUBLISHABLE_KEY is optional because the browser client already uses
-// the same public project key as a compile-time fallback. If supplied, it must be non-empty.
 const effectivePublicKey =
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 if (!effectivePublicKey) {
@@ -41,13 +39,17 @@ if (!effectivePublicKey) {
   process.exit(1);
 }
 
+function normalizeUrl(value) {
+  return String(value ?? '').trim().replace(/^(['"])(.*)\1$/, '$2').trim();
+}
+
 let serverUrl;
 let publicUrl;
 try {
-  serverUrl = new URL(process.env.SUPABASE_URL);
-  publicUrl = new URL(process.env.VITE_SUPABASE_URL);
+  serverUrl = new URL(normalizeUrl(process.env.SUPABASE_URL));
+  publicUrl = new URL(normalizeUrl(process.env.VITE_SUPABASE_URL));
 } catch {
-  console.error('Supabase URL configuration is invalid.');
+  console.error('Supabase URL configuration is invalid after normalization.');
   process.exit(1);
 }
 
