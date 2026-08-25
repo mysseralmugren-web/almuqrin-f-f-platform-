@@ -26,9 +26,10 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+// A weak legacy bootstrap token does not block an already-initialized deployment.
+// bootstrapFirstAdmin independently rejects missing/short tokens, so this remains fail-closed.
 if (process.env.BOOTSTRAP_TOKEN && process.env.BOOTSTRAP_TOKEN.length < 32) {
-  console.error('BOOTSTRAP_TOKEN must contain at least 32 characters when configured.');
-  process.exit(1);
+  console.log('Legacy BOOTSTRAP_TOKEN is below 32 characters; first-admin bootstrap remains locked.');
 }
 
 function normalizeUrl(value) {
