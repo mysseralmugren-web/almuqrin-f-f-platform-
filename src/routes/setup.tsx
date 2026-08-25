@@ -31,7 +31,6 @@ function SetupPage() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [bootstrapToken, setBootstrapToken] = useState("");
   const [fullName, setFullName] = useState("");
   const [companyNameAr, setCompanyNameAr] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,7 +47,7 @@ function SetupPage() {
     }
     setLoading(true);
     try {
-      await bootstrap({ data: { identifier, password, bootstrapToken, fullName, companyNameAr } });
+      await bootstrap({ data: { identifier, password, fullName, companyNameAr } });
       await login(identifier, password);
       toast.success(t("تم إنشاء حساب المدير", "Administrator created"));
       navigate({ to: "/settings" });
@@ -119,22 +118,6 @@ function SetupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="s-token">{t("رمز التهيئة السري", "Secret setup token")}</Label>
-                <Input
-                  id="s-token"
-                  type="password"
-                  dir="ltr"
-                  minLength={32}
-                  autoComplete="off"
-                  value={bootstrapToken}
-                  onChange={(e) => setBootstrapToken(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("يُضبط مرة واحدة في بيئة الخادم ولا يُحفظ في المتصفح.", "Configured once on the server and never stored in the browser.")}
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="s-name">{t("الاسم الكامل", "Full name")}</Label>

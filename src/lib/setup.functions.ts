@@ -5,7 +5,6 @@ import { parseManagerContactIdentifier } from "@/lib/auth-identifier";
 const bootstrapSchema = z.object({
   identifier: z.string().trim().min(8).max(320),
   password: z.string().min(12).max(128),
-  bootstrapToken: z.string().min(32).max(512),
   fullName: z.string().trim().min(2).max(120),
   companyNameAr: z.string().trim().min(2).max(160),
 });
@@ -29,13 +28,6 @@ export const getSetupState = createServerFn({ method: "GET" }).handler(async () 
 export const bootstrapFirstAdmin = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => bootstrapSchema.parse(input))
   .handler(async ({ data }) => {
-    const expectedToken = process.env["BOOTSTRAP_TOKEN"];
-    if (!expectedToken || expectedToken.length < 32) throw new Error("BOOTSTRAP_NOT_CONFIGURED");
-
-    const { createHash, timingSafeEqual } = await import("node:crypto");
-    const suppliedDigest = createHash("sha256").update(data.bootstrapToken).digest();
-    const expectedDigest = createHash("sha256").update(expectedToken).digest();
-    if (!timingSafeEqual(suppliedDigest, expectedDigest)) throw new Error("BOOTSTRAP_NOT_AUTHORIZED");
     const authIdentifier = parseManagerContactIdentifier(data.identifier);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
