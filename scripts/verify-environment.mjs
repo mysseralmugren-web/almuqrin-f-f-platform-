@@ -7,8 +7,8 @@ if (!process.env.VERCEL) {
   process.exit(0);
 }
 
-const requiredPublic = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY'];
-const requiredServer = [
+const required = [
+  'VITE_SUPABASE_URL',
   'SUPABASE_URL',
   'SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
@@ -24,11 +24,20 @@ const optionalServer = [
   'EMAIL_API_KEY',
 ];
 
-const missing = [...requiredPublic, ...requiredServer].filter((name) => !process.env[name]);
+const missing = required.filter((name) => !process.env[name]);
 const configuredOptional = optionalServer.filter((name) => Boolean(process.env[name]));
 
 if (missing.length > 0) {
   console.error(`Missing required environment keys: ${missing.join(', ')}`);
+  process.exit(1);
+}
+
+// VITE_SUPABASE_PUBLISHABLE_KEY is optional because the browser client already uses
+// the same public project key as a compile-time fallback. If supplied, it must be non-empty.
+const effectivePublicKey =
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+if (!effectivePublicKey) {
+  console.error('No Supabase publishable key is available for the browser client.');
   process.exit(1);
 }
 
@@ -57,6 +66,7 @@ if (process.env.BOOTSTRAP_TOKEN && process.env.BOOTSTRAP_TOKEN.length < 32) {
   process.exit(1);
 }
 
-console.log(`Environment verified: ${requiredPublic.length + requiredServer.length} required keys present.`);
+console.log(`Environment verified: ${required.length} required keys present.`);
 console.log(`Supabase target verified: ${TARGET_SUPABASE_HOST}.`);
+console.log(`Browser publishable key source: ${process.env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'VITE' : 'server public fallback'}.`);
 console.log(`Optional integrations configured: ${configuredOptional.length}/${optionalServer.length}.`);
