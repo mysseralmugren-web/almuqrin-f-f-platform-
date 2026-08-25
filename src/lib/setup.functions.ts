@@ -7,7 +7,17 @@ const bootstrapSchema = z.object({
   password: z.string().min(12).max(128),
   fullName: z.string().trim().min(2).max(120),
   companyNameAr: z.string().trim().min(2).max(160),
+  bootstrapToken: z.string().min(32).max(512),
 });
+
+function constantTimeStringEqual(left: string, right: string): boolean {
+  const maxLength = Math.max(left.length, right.length);
+  let difference = left.length ^ right.length;
+  for (let index = 0; index < maxLength; index += 1) {
+    difference |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+  return difference === 0;
+}
 
 /** Public: tells the UI whether the platform still needs its first administrator. */
 export const getSetupState = createServerFn({ method: "GET" }).handler(async () => {
@@ -28,13 +38,21 @@ export const getSetupState = createServerFn({ method: "GET" }).handler(async () 
 export const bootstrapFirstAdmin = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => bootstrapSchema.parse(input))
   .handler(async ({ data }) => {
-    const authIdentifier = parseManagerContactIdentifier(data.identifier);
+    const configuredBootstrapToken = process.env["BOOTSTRAP_TOKEN"];
+    if (!configuredBootstrapToken || configuredBootstrapToken.length < 32) {
+      throw new Error("SETUP_TOKEN_NOT_CONFIGURED");
+    }
+    if (!constantTimeStringEqual(data.bootstrapToken, configuredBootstrapToken)) {
+      throw new Error("SETUP_TOKEN_INVALID");
+    }
 
+    const authIdentifier = parseManagerContactIdentifier(data.identifier);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { count } = await supabaseAdmin
+    const { count, error: countError } = await supabaseAdmin
       .from("user_roles")
       .select("id", { count: "exact", head: true });
+    if (countError) throw new Error("SETUP_STATE_UNAVAILABLE");
     if ((count ?? 0) > 0) throw new Error("SETUP_ALREADY_COMPLETED");
 
     const { error: claimError } = await supabaseAdmin.from("platform_bootstrap_claims").insert({ id: true });
