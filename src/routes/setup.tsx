@@ -33,6 +33,7 @@ function SetupPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [companyNameAr, setCompanyNameAr] = useState("");
+  const [bootstrapToken, setBootstrapToken] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -45,9 +46,13 @@ function SetupPage() {
       toast.error(t("كلمة المرور 12 حرفاً على الأقل", "Password must be at least 12 characters"));
       return;
     }
+    if (bootstrapToken.length < 32) {
+      toast.error(t("رمز التهيئة غير صالح", "Invalid setup token"));
+      return;
+    }
     setLoading(true);
     try {
-      await bootstrap({ data: { identifier, password, fullName, companyNameAr } });
+      await bootstrap({ data: { identifier, password, fullName, companyNameAr, bootstrapToken } });
       await login(identifier, password);
       toast.success(t("تم إنشاء حساب المدير", "Administrator created"));
       navigate({ to: "/settings" });
@@ -131,6 +136,25 @@ function SetupPage() {
                   onChange={(e) => setCompanyNameAr(e.target.value)}
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="s-bootstrap-token">{t("رمز تهيئة المنصة", "Platform setup token")}</Label>
+                <Input
+                  id="s-bootstrap-token"
+                  type="password"
+                  dir="ltr"
+                  minLength={32}
+                  autoComplete="off"
+                  value={bootstrapToken}
+                  onChange={(e) => setBootstrapToken(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "رمز سري عالي العشوائية يُضبط على الخادم ويُستخدم مرة واحدة عند إنشاء أول مدير.",
+                    "A high-entropy server-configured token used only when creating the first administrator.",
+                  )}
+                </p>
               </div>
               <Button type="submit" disabled={loading || needsSetup === null} className="h-11 w-full gradient-primary font-semibold">
                 {loading ? t("جاري الإنشاء...", "Creating...") : t("إنشاء حساب المدير", "Create administrator")}
