@@ -7,9 +7,25 @@ import type { Database } from './types';
 
 const STAGING_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
 
+function resolveSupabaseUrl(value: string | undefined): string {
+  const candidate = value?.trim().replace(/^(['"])(.*)\1$/, '$2') || STAGING_SUPABASE_URL;
+
+  try {
+    const url = new URL(candidate);
+    if ((url.protocol === 'https:' || url.protocol === 'http:') && url.hostname.endsWith('.supabase.co')) {
+      return url.origin;
+    }
+  } catch {
+    // Fall through to the fixed preview project URL below.
+  }
+
+  console.warn('[Supabase] Invalid SUPABASE_URL; using the configured preview project URL.');
+  return STAGING_SUPABASE_URL;
+}
+
 function createSupabaseAdminClient() {
   // The project URL is public configuration; the service-role credential remains env-only.
-  const SUPABASE_URL = process.env['SUPABASE_URL'] || STAGING_SUPABASE_URL;
+  const SUPABASE_URL = resolveSupabaseUrl(process.env['SUPABASE_URL']);
   const SUPABASE_SERVICE_ROLE_KEY = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
