@@ -7,6 +7,22 @@ import type { Database } from './types';
 const STAGING_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
 const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
 
+function resolveSupabaseUrl(value: string | undefined): string {
+  const candidate = value?.trim().replace(/^(['"])(.*)\1$/, '$2') || STAGING_SUPABASE_URL;
+
+  try {
+    const url = new URL(candidate);
+    if ((url.protocol === 'https:' || url.protocol === 'http:') && url.hostname.endsWith('.supabase.co')) {
+      return url.origin;
+    }
+  } catch {
+    // Fall through to the fixed preview project URL below.
+  }
+
+  console.warn('[Supabase] Invalid browser Supabase URL; using the configured preview project URL.');
+  return STAGING_SUPABASE_URL;
+}
+
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
@@ -37,8 +53,9 @@ function createSupabaseClient() {
   // Fall back to process.env for SSR (server-side rendering)
   // Vite only guarantees static replacement for direct property access.
   const serverEnv = typeof process !== 'undefined' ? process.env : undefined;
-  const SUPABASE_URL =
-    import.meta.env.VITE_SUPABASE_URL || serverEnv?.SUPABASE_URL || STAGING_SUPABASE_URL;
+  const SUPABASE_URL = resolveSupabaseUrl(
+    import.meta.env.VITE_SUPABASE_URL || serverEnv?.SUPABASE_URL,
+  );
   const SUPABASE_PUBLISHABLE_KEY =
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     serverEnv?.SUPABASE_PUBLISHABLE_KEY ||
