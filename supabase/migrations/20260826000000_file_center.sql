@@ -1,4 +1,6 @@
 -- File centre. Safe for databases where the generic attachments module was not installed yet.
+create extension if not exists pgcrypto;
+
 create table if not exists public.attachments (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
