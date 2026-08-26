@@ -1,5 +1,6 @@
 const TARGET_SUPABASE_HOST = 'vmswbmkkgvnjhznxbsdz.supabase.co';
 const TARGET_SUPABASE_URL = `https://${TARGET_SUPABASE_HOST}`;
+const TARGET_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
 
 // GitHub CI validates code without deployment secrets. Vercel builds must validate
 // their runtime environment before a candidate can become deployable.
@@ -8,7 +9,7 @@ if (!process.env.VERCEL) {
   process.exit(0);
 }
 
-const required = ['SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY'];
+const required = ['SUPABASE_SERVICE_ROLE_KEY'];
 const optionalServer = [
   'BOOTSTRAP_TOKEN',
   'LOVABLE_API_KEY',
@@ -56,8 +57,6 @@ if (serverUrl !== TARGET_SUPABASE_URL || publicUrl !== TARGET_SUPABASE_URL) {
   process.exit(1);
 }
 
-const publishableKey =
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function assertHttpOk(label, url, key) {
@@ -79,8 +78,13 @@ async function assertHttpOk(label, url, key) {
   }
 }
 
-// Public-key validation proves the browser-facing key belongs to this project.
-await assertHttpOk('Supabase publishable key', `${TARGET_SUPABASE_URL}/auth/v1/settings`, publishableKey);
+// The browser client is pinned to this public project key in source. Validate that exact
+// key instead of stale deployment env values, which are intentionally ignored by runtime.
+await assertHttpOk(
+  'Supabase publishable key',
+  `${TARGET_SUPABASE_URL}/auth/v1/settings`,
+  TARGET_SUPABASE_PUBLISHABLE_KEY,
+);
 
 // Admin endpoint validation proves the server credential has service-level authority
 // for this exact project. A publishable/anon key cannot pass this check.
@@ -91,5 +95,5 @@ await assertHttpOk(
 );
 
 console.log(`Environment verified for approved Supabase target: ${TARGET_SUPABASE_HOST}.`);
-console.log(`Browser publishable key source: ${process.env.VITE_SUPABASE_PUBLISHABLE_KEY ? 'VITE' : 'server public fallback'}.`);
+console.log('Browser publishable key source: pinned approved project key.');
 console.log(`Optional integrations configured: ${configuredOptional.length}/${optionalServer.length}.`);
