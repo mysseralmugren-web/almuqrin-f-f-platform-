@@ -31,6 +31,7 @@ export const createAttachmentUploadUrl = createServerFn({ method: "POST" })
           "goods_receipt",
           "supplier_invoice",
           "supplier_return",
+          "file_center",
         ]),
         entity_id: z.string().uuid(),
         file_name: z.string().trim().min(1).max(160),
@@ -57,6 +58,10 @@ export const registerAttachment = createServerFn({ method: "POST" })
         file_name: z.string().min(1).max(160),
         content_type: z.string().max(120).optional().nullable(),
         size_bytes: z.number().int().nonnegative().max(50 * 1024 * 1024).optional().nullable(),
+        title: z.string().trim().min(1).max(160).optional(),
+        description: z.string().max(2000).optional().nullable(),
+        category: z.enum(["plans","contracts","invoices","site_photos","designs","other"]).optional(),
+        checksum: z.string().regex(/^[a-f0-9]{64}$/).optional(),
       })
       .parse(input),
   )
@@ -106,5 +111,27 @@ export const getAttachmentUrl = createServerFn({ method: "POST" })
     const { data: signed, error: sErr } = await c.supabase.storage.from(BUCKET).createSignedUrl(att.object_path, 300);
     if (sErr) throw new Error(sErr.message);
     return { url: signed.signedUrl, expires_in: 300 };
+  });
+
+export const listFileCenter = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const c = context as Ctx;
+    const company_id = await companyOf(c);
+    const { data, error } = await c.supabase.from("attachments").select("*").eq("company_id", company_id).order("sort_order").order("created_at", { ascending: false }).limit(500);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const updateAttachment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    id:z.string().uuid(), title:z.string().trim().min(1).max(160).optional(), description:z.string().max(2000).nullable().optional(),
+    category:z.enum(["plans","contracts","invoices","site_photos","designs","other"]).optional(), deleted_at:z.string().datetime().nullable().optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const c=context as Ctx; const company_id=await companyOf(c);
+    const { id, ...changes }=data; const { error }=await c.supabase.from("attachments").update({...changes,updated_at:new Date().toISOString()}).eq("id",id).eq("company_id",company_id);
+    if(error) throw new Error(error.message); return {ok:true};
   });
 

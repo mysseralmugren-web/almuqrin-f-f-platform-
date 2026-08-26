@@ -22,6 +22,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDeliveryNotesRouteImport } from './routes/_authenticated/delivery-notes'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedErpRouteImport } from './routes/_authenticated/erp'
+import { Route as AuthenticatedFilesRouteImport } from './routes/_authenticated/files'
 import { Route as AuthenticatedHrRouteImport } from './routes/_authenticated/hr'
 import { Route as AuthenticatedIntegrationsRouteImport } from './routes/_authenticated/integrations'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
@@ -175,6 +176,11 @@ const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
 const AuthenticatedErpRoute = AuthenticatedErpRouteImport.update({
   id: '/erp',
   path: '/erp',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedFilesRoute = AuthenticatedFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedHrRoute = AuthenticatedHrRouteImport.update({
@@ -691,6 +697,7 @@ export interface FileRoutesByFullPath {
   '/delivery-notes': typeof AuthenticatedDeliveryNotesRoute
   '/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/erp': typeof AuthenticatedErpRoute
+  '/files': typeof AuthenticatedFilesRoute
   '/hr': typeof AuthenticatedHrRouteWithChildren
   '/integrations': typeof AuthenticatedIntegrationsRouteWithChildren
   '/inventory': typeof AuthenticatedInventoryRoute
@@ -788,6 +795,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/delivery-notes': typeof AuthenticatedDeliveryNotesRoute
   '/erp': typeof AuthenticatedErpRoute
+  '/files': typeof AuthenticatedFilesRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
   '/quotations': typeof AuthenticatedQuotationsRoute
@@ -886,6 +894,7 @@ export interface FileRoutesById {
   '/_authenticated/delivery-notes': typeof AuthenticatedDeliveryNotesRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRouteWithChildren
   '/_authenticated/erp': typeof AuthenticatedErpRoute
+  '/_authenticated/files': typeof AuthenticatedFilesRoute
   '/_authenticated/hr': typeof AuthenticatedHrRouteWithChildren
   '/_authenticated/integrations': typeof AuthenticatedIntegrationsRouteWithChildren
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
@@ -990,6 +999,7 @@ export interface FileRouteTypes {
     | '/delivery-notes'
     | '/documents'
     | '/erp'
+    | '/files'
     | '/hr'
     | '/integrations'
     | '/inventory'
@@ -1087,6 +1097,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/delivery-notes'
     | '/erp'
+    | '/files'
     | '/inventory'
     | '/invoices'
     | '/quotations'
@@ -1184,6 +1195,7 @@ export interface FileRouteTypes {
     | '/_authenticated/delivery-notes'
     | '/_authenticated/documents'
     | '/_authenticated/erp'
+    | '/_authenticated/files'
     | '/_authenticated/hr'
     | '/_authenticated/integrations'
     | '/_authenticated/inventory'
@@ -1374,6 +1386,13 @@ declare module '@tanstack/react-router' {
       path: '/erp'
       fullPath: '/erp'
       preLoaderRoute: typeof AuthenticatedErpRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/files': {
+      id: '/_authenticated/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof AuthenticatedFilesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/hr': {
@@ -2264,6 +2283,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDeliveryNotesRoute: typeof AuthenticatedDeliveryNotesRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRouteWithChildren
   AuthenticatedErpRoute: typeof AuthenticatedErpRoute
+  AuthenticatedFilesRoute: typeof AuthenticatedFilesRoute
   AuthenticatedHrRoute: typeof AuthenticatedHrRouteWithChildren
   AuthenticatedIntegrationsRoute: typeof AuthenticatedIntegrationsRouteWithChildren
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
@@ -2294,6 +2314,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDeliveryNotesRoute: AuthenticatedDeliveryNotesRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRouteWithChildren,
   AuthenticatedErpRoute: AuthenticatedErpRoute,
+  AuthenticatedFilesRoute: AuthenticatedFilesRoute,
   AuthenticatedHrRoute: AuthenticatedHrRouteWithChildren,
   AuthenticatedIntegrationsRoute: AuthenticatedIntegrationsRouteWithChildren,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,

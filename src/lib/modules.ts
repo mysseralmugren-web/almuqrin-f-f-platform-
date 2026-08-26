@@ -18,6 +18,7 @@ import {
   ClipboardList,
   ShieldCheck,
   FileStack,
+  FolderOpen,
   Plug,
   type LucideIcon,
 } from "lucide-react";
@@ -53,6 +54,7 @@ export const MODULES: ModuleDef[] = [
   { key: "hr", path: "/hr", labelAr: "الموارد البشرية", labelEn: "Human Resources", icon: UserCog, group: "finance", roles: ["super_admin", "factory_owner", "general_manager", "hr"] },
   { key: "ai-assistant", path: "/ai-assistant", labelAr: "المساعد الذكي", labelEn: "AI Assistant", icon: Sparkles, group: "system" },
   { key: "documents", path: "/documents", labelAr: "مركز المستندات والهوية", labelEn: "Documents & Identity", icon: FileStack, group: "system" },
+  { key: "files", path: "/files", labelAr: "الملفات والصور", labelEn: "Files & Images", icon: FolderOpen, group: "system" },
   { key: "integrations", path: "/integrations", labelAr: "التكاملات والإشعارات", labelEn: "Integrations & Notifications", icon: Plug, group: "system", roles: ["super_admin", "factory_owner", "general_manager", "sales_manager", "sales_employee", "project_manager"] },
   { key: "reports", path: "/reports", labelAr: "التقارير", labelEn: "Reports", icon: BarChart3, group: "system" },
   { key: "settings", path: "/settings", labelAr: "الإعدادات", labelEn: "Settings", icon: Settings, group: "system", roles: ["super_admin", "factory_owner", "general_manager"] },
