@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "brand": {
+    "logo": "/brand/almugren-furniture-logo.jpeg",
+    "primary": "#1E3A5F",
+    "secondary": "#C0C0C0",
+    "watermark": "ALMUQRIN"
+  },
+  "company": {
+    "legal_name_ar": "مصنع ميسر عبدالرحمن المقرن للأثاث",
+    "cr_number": "7052998890",
+    "vat_number": "314488703200003",
+    "phone": "0502227034",
+    "address": "الرياض - حي النور - شارع طريب - مبنى 3451 - الرمز البريدي 14321",
+    "short_address": "RNNA3451"
+  },
+  "bank": {
+    "name": "مصرف الراجحي",
+    "iban": "SA9380000454608016309974",
+    "account_number": "454000010006086309974"
+  },
+  "defaults": {
+    "tax_invoice": "ALM-SALES-INVOICE",
+    "purchase_invoice": "ALM-PURCHASE-INVOICE",
+    "receipt_voucher": "ALM-RECEIPT-VOUCHER",
+    "manufacturing_order": "ALM-MANUFACTURING-ORDER",
+    "journal_entry": "ALM-JOURNAL-ENTRY",
+    "payroll_register": "ALM-PAYROLL-REGISTER"
+  }
+}
