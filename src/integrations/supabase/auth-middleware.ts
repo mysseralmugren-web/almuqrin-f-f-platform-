@@ -4,8 +4,8 @@ import { getRequest } from '@tanstack/react-start/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 
-const STAGING_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
-const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
+const APPROVED_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
+const APPROVED_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
@@ -21,7 +21,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
-    // New Supabase API keys are opaque strings, not bearer JWTs.
     if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
       headers.delete('Authorization');
     }
@@ -33,22 +32,10 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
-    
-    // Both values are public browser configuration; authorization is enforced by RLS.
-    const SUPABASE_URL = process.env['SUPABASE_URL'] || STAGING_SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY =
-      process.env['SUPABASE_PUBLISHABLE_KEY'] || STAGING_SUPABASE_PUBLISHABLE_KEY;
+    // Auth middleware is pinned to the same approved project as the browser client.
+    const SUPABASE_URL = APPROVED_SUPABASE_URL;
+    const SUPABASE_PUBLISHABLE_KEY = APPROVED_SUPABASE_PUBLISHABLE_KEY;
 
-    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      const missing = [
-        ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-        ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
-      ];
-      const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Configure the deployment environment.`;
-      console.error(`[Supabase] ${message}`);
-      throw new Error(message);
-    }
-    
     const request = getRequest();
 
     if (!request?.headers) {
@@ -75,11 +62,11 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
     }
 
     const supabase = createClient<Database>(
-      SUPABASE_URL!,
-      SUPABASE_PUBLISHABLE_KEY!,
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY,
       {
         global: {
-          fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY!),
+          fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
           headers: {
             Authorization: `Bearer ${token}`,
           },
