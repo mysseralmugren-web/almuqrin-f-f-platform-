@@ -2,26 +2,11 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Preview-safe fallback. These values are public browser credentials; RLS remains
-// the authorization boundary. Server/service credentials must never be added here.
-const STAGING_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
-const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
-
-function resolveSupabaseUrl(value: string | undefined): string {
-  const candidate = value?.trim().replace(/^(['"])(.*)\1$/, '$2') || STAGING_SUPABASE_URL;
-
-  try {
-    const url = new URL(candidate);
-    if ((url.protocol === 'https:' || url.protocol === 'http:') && url.hostname.endsWith('.supabase.co')) {
-      return url.origin;
-    }
-  } catch {
-    // Fall through to the fixed preview project URL below.
-  }
-
-  console.warn('[Supabase] Invalid browser Supabase URL; using the configured preview project URL.');
-  return STAGING_SUPABASE_URL;
-}
+// Canonical browser configuration for the approved AlMugren company_id project.
+// Both values are public browser credentials; authorization remains enforced by RLS.
+// Server/service credentials must never be added here.
+const APPROVED_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
+const APPROVED_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
@@ -47,33 +32,12 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
-  // Vite only guarantees static replacement for direct property access.
-  const serverEnv = typeof process !== 'undefined' ? process.env : undefined;
-  const SUPABASE_URL = resolveSupabaseUrl(
-    import.meta.env.VITE_SUPABASE_URL || serverEnv?.SUPABASE_URL,
-  );
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    serverEnv?.SUPABASE_PUBLISHABLE_KEY ||
-    STAGING_SUPABASE_PUBLISHABLE_KEY;
-
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Configure the deployment environment.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
-  }
-
-  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  // This installation is intentionally pinned to the approved company_id Supabase project.
+  // Avoid accepting stale/mismatched deployment variables for public browser configuration.
+  return createClient<Database>(APPROVED_SUPABASE_URL, APPROVED_SUPABASE_PUBLISHABLE_KEY, {
     global: {
-      fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
+      fetch: createSupabaseFetch(APPROVED_SUPABASE_PUBLISHABLE_KEY),
     },
     auth: {
       storage: typeof window !== 'undefined' ? localStorage : undefined,
