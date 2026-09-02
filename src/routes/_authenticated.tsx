@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { AppHeader } from "@/components/app/app-header";
+import { PrintVerificationQr } from "@/components/app/print-verification-qr";
 import { TenantBrandingProvider } from "@/lib/tenant-branding";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -26,6 +27,7 @@ function AuthenticatedLayout() {
       {location.pathname.startsWith("/print/") ? (
         <main className="min-h-screen bg-white p-4 text-slate-950 print:p-0">
           <Outlet />
+          <PrintVerificationQr pathname={location.pathname} />
         </main>
       ) : (
         <SidebarProvider>
