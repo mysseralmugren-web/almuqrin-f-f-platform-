@@ -36,6 +36,9 @@ jobs:
       - name: Finance AI acceptance
         run: node scripts/finance-ai/validate-suite.mjs
 
+      - name: Document QR acceptance
+        run: node scripts/documents/validate-qr.mjs
+
       - name: Static security regressions
         run: bun run test:security:static
 

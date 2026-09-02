@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DocumentQrSettings } from "@/components/app/document-qr-settings";
 import { getCompanyIdentity, saveCompanyIdentity } from "@/lib/documents.functions";
 import { useT } from "@/lib/theme";
 
@@ -101,6 +102,8 @@ function BrandingPage() {
           </form>
         </CardContent>
       </Card>
+
+      <DocumentQrSettings />
 
       <Card className="shadow-card">
         <CardHeader><CardTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />{t("معاينة هوية التطبيق", "App identity preview")}</CardTitle></CardHeader>
