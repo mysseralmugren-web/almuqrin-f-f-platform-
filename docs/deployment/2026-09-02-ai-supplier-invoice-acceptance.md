@@ -1,0 +1,1 @@
+Acceptance target: completed AI supplier invoice -> human review -> supplier match/create -> reviewed VAT/lines -> draft supplier invoice -> purchasing/accounting approval. No automatic posting.

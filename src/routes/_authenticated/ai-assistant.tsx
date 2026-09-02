@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Sparkles, Inbox, Palette, Armchair, BarChart3, Settings2 } from "lucide-react";
+import { Sparkles, Inbox, Palette, Armchair, BarChart3, Settings2, ReceiptText } from "lucide-react";
 import { useT } from "@/lib/theme";
 
 export const Route = createFileRoute("/_authenticated/ai-assistant")({
@@ -22,6 +22,7 @@ function AiLayout() {
 
   const tabs = [
     { to: "/ai-assistant", ar: "صندوق المهام", en: "Task inbox", icon: Inbox, exact: true },
+    { to: "/ai-assistant/invoice", ar: "فاتورة مورد ذكية", en: "Smart supplier invoice", icon: ReceiptText, exact: false },
     { to: "/ai-assistant/design", ar: "تصميم ديزاين", en: "Design skill", icon: Palette, exact: false },
     { to: "/ai-assistant/seating", ar: "سعة الجلسات", en: "Seating capacity", icon: Armchair, exact: false },
     { to: "/ai-assistant/usage", ar: "التقارير والاستخدام", en: "Reports & usage", icon: BarChart3, exact: false },
