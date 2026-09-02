@@ -1,8 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 function secret(): string {
-  const value = process.env["DOCUMENT_QR_SECRET"];
-  if (!value || value.length < 32) throw new Error("DOCUMENT_QR_SECRET_MISSING");
+  const candidates = [
+    process.env["DOCUMENT_QR_SECRET"],
+    process.env["WEBSITE_WEBHOOK_SECRET"],
+    process.env["SUPABASE_SERVICE_ROLE_KEY"],
+  ];
+  const value = candidates.find((candidate) => typeof candidate === "string" && candidate.length >= 32);
+  if (!value) throw new Error("DOCUMENT_QR_SECRET_MISSING");
   return value;
 }
 
