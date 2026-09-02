@@ -1,79 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useT, useTheme } from "@/lib/theme";
-import { ROLES, PERMISSIONS, MODULES_LIST } from "@/lib/admin-data";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth, ROLE_LABELS, type Role } from "@/lib/auth";
+import { MODULES } from "@/lib/modules";
+import { useModulePermissions } from "@/lib/module-permissions";
 
-export const Route = createFileRoute("/_authenticated/admin/permissions")({
-  head: () => ({ meta: [{ title: "Permissions · AlMugren AI Factory OS" }] }),
-  component: PermissionsPage,
-});
-
-function PermissionsPage() {
-  const t = useT();
-  const { lang } = useTheme();
-  const [role, setRole] = useState(ROLES[3].key);
-  const active = ROLES.find((r) => r.key === role) ?? ROLES[0];
-  const isOn = (m: number, p: number) => (m * 7 + p * 3) % 4 !== 0;
-
-  return (
-    <Card className="shadow-card">
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle className="text-base">{t("مصفوفة الصلاحيات", "Permissions matrix")}</CardTitle>
-          <CardDescription>
-            {t("تحكم دقيق لكل دور عبر جميع الوحدات.", "Granular control per role across every module.")}
-          </CardDescription>
-        </div>
-        <div className="flex items-center gap-2">
-          <Label className="text-xs text-muted-foreground">{t("الدور", "Role")}</Label>
-          <Select value={role} onValueChange={setRole}>
-            <SelectTrigger className="h-9 w-56"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {ROLES.map((r) => <SelectItem key={r.key} value={r.key}>{lang === "ar" ? r.ar : r.en}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button size="sm" className="gradient-primary">{t("حفظ", "Save")}</Button>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[180px]">{t("الوحدة", "Module")}</TableHead>
-                {PERMISSIONS.map((p) => (
-                  <TableHead key={p.key} className="text-center text-xs">
-                    {lang === "ar" ? p.ar : p.en}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MODULES_LIST.map((m, mi) => (
-                <TableRow key={m.en}>
-                  <TableCell className="font-medium">{lang === "ar" ? m.ar : m.en}</TableCell>
-                  {PERMISSIONS.map((p, pi) => (
-                    <TableCell key={p.key} className="text-center">
-                      <Checkbox defaultChecked={isOn(mi, pi)} />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-muted-foreground">
-          <span>{t(`الدور: ${lang === "ar" ? active.ar : active.en}`, `Role: ${lang === "ar" ? active.ar : active.en}`)}</span>
-          <span>{t("آخر تحديث: اليوم 08:14", "Last updated: today 08:14")}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
+export const Route = createFileRoute("/_authenticated/admin/permissions")({ head:()=>({meta:[{title:"صلاحيات الأدوار · منصة المقرن"}]}), component:PermissionsPage });
+type Action="can_view"|"can_create"|"can_edit"|"can_approve"|"can_delete"|"can_export";
+type Row={module_key:string;can_view:boolean;can_create:boolean;can_edit:boolean;can_approve:boolean;can_delete:boolean;can_export:boolean};
+const actions:[Action,string][]=[["can_view","عرض"],["can_create","إنشاء"],["can_edit","تعديل"],["can_approve","اعتماد"],["can_delete","حذف"],["can_export","تصدير"]];
+const roles=Object.keys(ROLE_LABELS) as Role[];
+const emptyRow=(moduleKey:string):Row=>({module_key:moduleKey,can_view:false,can_create:false,can_edit:false,can_approve:false,can_delete:false,can_export:false});
+function PermissionsPage(){
+ const {user}=useAuth(); const {refresh}=useModulePermissions(); const [role,setRole]=useState<Role>("sales_employee"); const [rows,setRows]=useState<Record<string,Row>>({}); const [loading,setLoading]=useState(false); const [saving,setSaving]=useState(false);
+ useEffect(()=>{void load()},[role,user?.companyId]);
+ async function load(){if(!user?.companyId)return;setLoading(true);const {data,error}=await (supabase as any).from("role_module_permissions").select("module_key,can_view,can_create,can_edit,can_approve,can_delete,can_export").eq("company_id",user.companyId).eq("role",role);setLoading(false);if(error){toast.error(error.message);return}const map:Record<string,Row>={};for(const r of data??[])map[r.module_key]=r;setRows(map)}
+ function toggle(moduleKey:string,action:Action,value:boolean){setRows(cur=>{const base=cur[moduleKey]??emptyRow(moduleKey);return {...cur,[moduleKey]:{...base,[action]:value,...(action!=="can_view"&&value?{can_view:true}:{})}}})}
+ async function save(){if(!user?.companyId)return;setSaving(true);const updatedAt=new Date().toISOString();const payload=MODULES.map(m=>{const r=rows[m.key]??emptyRow(m.key);return {company_id:user.companyId,role,module_key:m.key,can_view:r.can_view,can_create:r.can_create,can_edit:r.can_edit,can_approve:r.can_approve,can_delete:r.can_delete,can_export:r.can_export,updated_at:updatedAt}});const {error}=await (supabase as any).from("role_module_permissions").upsert(payload,{onConflict:"company_id,role,module_key"});setSaving(false);if(error){toast.error(error.message);return}await refresh();toast.success("تم حفظ صلاحيات الدور وتطبيقها على اللوحات")}
+ const enabled=useMemo(()=>Object.values(rows).filter(r=>r.can_view).length,[rows]);
+ return <Card className="shadow-card"><CardHeader><div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><CardTitle>مصفوفة صلاحيات لوحات العمل</CardTitle><CardDescription className="mt-2">هذه الصلاحيات تتحكم فعليًا في ظهور القائمة والوصول المباشر لكل لوحة داخل منصة المقرن.</CardDescription></div><div className="flex flex-wrap gap-2"><Select value={role} onValueChange={v=>setRole(v as Role)}><SelectTrigger className="w-56"><SelectValue/></SelectTrigger><SelectContent>{roles.map(r=><SelectItem key={r} value={r}>{ROLE_LABELS[r].ar}</SelectItem>)}</SelectContent></Select><Button onClick={save} disabled={saving||loading}>حفظ وتطبيق</Button></div></div></CardHeader><CardContent className="p-0"><div className="border-y px-5 py-3 text-xs text-muted-foreground">الدور: <b>{ROLE_LABELS[role].ar}</b> • اللوحات الظاهرة: <b>{enabled}</b> من {MODULES.length}</div><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead className="min-w-[220px]">لوحة العمل</TableHead>{actions.map(([,label])=><TableHead key={label} className="text-center">{label}</TableHead>)}</TableRow></TableHeader><TableBody>{MODULES.map(m=>{const r=rows[m.key]??emptyRow(m.key);return <TableRow key={m.key}><TableCell><div className="font-medium">{m.labelAr}</div><div className="text-[11px] text-muted-foreground">{m.key}</div></TableCell>{actions.map(([a])=><TableCell key={a} className="text-center"><Checkbox checked={r[a]} onCheckedChange={v=>toggle(m.key,a,v===true)}/></TableCell>)}</TableRow>})}</TableBody></Table></div></CardContent></Card>
 }
-
