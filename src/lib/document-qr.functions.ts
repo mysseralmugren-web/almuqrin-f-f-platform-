@@ -66,6 +66,17 @@ export const getPrintVerificationQr = createServerFn({ method: "POST" })
     const settings = await getDocumentQrSettingsForContext(c, company_id);
     if (!settings.enabled) return { enabled: false as const };
 
+    const docMatch = data.pathname.match(/^\/documents\/([0-9a-f-]{36})$/i);
+    if (docMatch?.[1] && !settings.show_internal_on_tax_invoice) {
+      const { data: generated } = await c.supabase
+        .from("generated_documents")
+        .select("kind")
+        .eq("id", docMatch[1])
+        .eq("company_id", company_id)
+        .maybeSingle();
+      if (generated?.kind === "tax_invoice") return { enabled: false as const };
+    }
+
     const identityResult = await c.supabase.from("company_identity").select("trade_name_ar,trade_name_en").eq("company_id", company_id).maybeSingle();
     const companyResult = await c.supabase.from("companies").select("name_ar,name_en").eq("id", company_id).maybeSingle();
     const payload = {
