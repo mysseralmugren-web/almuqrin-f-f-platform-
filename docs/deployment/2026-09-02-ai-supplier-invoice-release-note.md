@@ -1,0 +1,1 @@
+Release note: adds a human-approved AI supplier-invoice workflow with supplier matching/creation, extracted invoice fields and line items, VAT review, and draft invoice creation without automatic ledger posting.
