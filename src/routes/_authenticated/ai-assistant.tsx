@@ -6,9 +6,9 @@ export const Route = createFileRoute("/_authenticated/ai-assistant")({
   head: () => ({
     meta: [
       { title: "الموظف الذكي · AlMugren AI Factory OS" },
-      { name: "description", content: "AI employee: document, image, cost analysis and factory digital twin skills with human review controls." },
+      { name: "description", content: "AI employee: document, image, cost analysis and room-to-production digital twin workflows with human review controls." },
       { property: "og:title", content: "الموظف الذكي · AlMugren AI Factory OS" },
-      { property: "og:description", content: "AI employee and factory digital twin with controlled skills and human approval." },
+      { property: "og:description", content: "AI employee and room-to-production digital twin with controlled skills and human approval." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
