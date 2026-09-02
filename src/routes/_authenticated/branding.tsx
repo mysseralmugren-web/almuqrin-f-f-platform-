@@ -9,113 +9,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DocumentQrSettings } from "@/components/app/document-qr-settings";
+import { WatermarkSettings } from "@/components/app/watermark-settings";
 import { getCompanyIdentity, saveCompanyIdentity } from "@/lib/documents.functions";
 import { useT } from "@/lib/theme";
 
-export const Route = createFileRoute("/_authenticated/branding")({
-  head: () => ({ meta: [{ title: "هوية المصنع · Factory OS" }] }),
-  component: BrandingPage,
-});
-
-type BrandForm = {
-  trade_name_ar: string;
-  trade_name_en: string;
-  logo_path: string;
-  primary_color: string;
-  secondary_color: string;
-  watermark_text: string;
-};
-
-const fallback: BrandForm = {
-  trade_name_ar: "مصنع المقرن للأثاث والديكور",
-  trade_name_en: "ALMUQRIN FURNITURE FACTORY",
-  logo_path: "/brand/almugren-furniture-logo.jpeg",
-  primary_color: "#15293B",
-  secondary_color: "#C0C7CF",
-  watermark_text: "ALMUQRIN FURNITURE FACTORY",
-};
-
-function BrandingPage() {
-  const t = useT();
-  const fetchIdentity = useServerFn(getCompanyIdentity);
-  const saveIdentity = useServerFn(saveCompanyIdentity);
-  const qc = useQueryClient();
-  const { data } = useQuery({ queryKey: ["identity"], queryFn: () => fetchIdentity({}) });
-  const [form, setForm] = useState<BrandForm>(fallback);
-
-  useEffect(() => {
-    const identity = (data?.identity ?? {}) as Record<string, unknown>;
-    const company = (data?.company ?? {}) as Record<string, unknown>;
-    setForm({
-      trade_name_ar: String(identity.trade_name_ar || company.name_ar || fallback.trade_name_ar),
-      trade_name_en: String(identity.trade_name_en || company.name_en || fallback.trade_name_en),
-      logo_path: String(identity.logo_path || fallback.logo_path),
-      primary_color: String(identity.primary_color || fallback.primary_color),
-      secondary_color: String(identity.secondary_color || fallback.secondary_color),
-      watermark_text: String(identity.watermark_text || fallback.watermark_text),
-    });
-  }, [data]);
-
-  const save = useMutation({
-    mutationFn: () => saveIdentity({ data: { ...form, watermark_enabled: true } }),
-    onSuccess: async () => {
-      toast.success(t("تم حفظ هوية المصنع", "Factory brand saved"));
-      await qc.invalidateQueries({ queryKey: ["identity"] });
-      await qc.invalidateQueries({ queryKey: ["tenant-brand"] });
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t("تعذر الحفظ", "Save failed")),
-  });
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    save.mutate();
-  }
-
-  const set = (key: keyof BrandForm, value: string) => setForm((current) => ({ ...current, [key]: value }));
-
-  return (
-    <div className="space-y-6">
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5 text-primary" />{t("هوية المصنع", "Factory branding")}</CardTitle>
-          <CardDescription>{t("كل مصنع داخل المنصة يملك اسمه وشعاره وألوانه بصورة مستقلة.", "Each factory tenant has an independent name, logo and colour identity.")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={submit} className="grid gap-4 md:grid-cols-2">
-            <Field label={t("اسم المصنع بالعربية", "Arabic factory name")} value={form.trade_name_ar} onChange={(v) => set("trade_name_ar", v)} />
-            <Field label={t("اسم المصنع بالإنجليزية", "English factory name")} value={form.trade_name_en} onChange={(v) => set("trade_name_en", v)} dir="ltr" />
-            <div className="space-y-2 md:col-span-2">
-              <Label>{t("مسار/رابط الشعار", "Logo path / URL")}</Label>
-              <Input dir="ltr" value={form.logo_path} onChange={(e) => set("logo_path", e.target.value)} placeholder="/brand/factory-logo.png" />
-              <p className="text-xs text-muted-foreground">{t("يستخدم هذا الشعار في المنصة والمستندات والعلامة المائية وأيقونة الويب.", "Used across the app, documents, watermark and web app icon.")}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("اللون الأساسي", "Primary colour")}</Label>
-              <div className="flex gap-2"><Input type="color" className="w-16 p-1" value={form.primary_color} onChange={(e) => set("primary_color", e.target.value)} /><Input dir="ltr" value={form.primary_color} onChange={(e) => set("primary_color", e.target.value)} /></div>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("اللون الثانوي", "Secondary colour")}</Label>
-              <div className="flex gap-2"><Input type="color" className="w-16 p-1" value={form.secondary_color} onChange={(e) => set("secondary_color", e.target.value)} /><Input dir="ltr" value={form.secondary_color} onChange={(e) => set("secondary_color", e.target.value)} /></div>
-            </div>
-            <Field label={t("نص العلامة المائية", "Watermark text")} value={form.watermark_text} onChange={(v) => set("watermark_text", v)} />
-            <div className="md:col-span-2 flex justify-end"><Button type="submit" disabled={save.isPending} className="gap-2"><Save className="h-4 w-4" />{t("حفظ واعتماد الهوية", "Save branding")}</Button></div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <DocumentQrSettings />
-
-      <Card className="shadow-card">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />{t("معاينة هوية التطبيق", "App identity preview")}</CardTitle></CardHeader>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-3xl border bg-white p-2 shadow-elegant"><img src={form.logo_path} alt="Factory app icon" className="h-full w-full object-contain" /></div>
-          <div><div className="text-lg font-bold">{form.trade_name_ar}</div><div className="text-sm text-muted-foreground">{form.trade_name_en}</div><p className="mt-3 max-w-xl text-xs text-muted-foreground">{t("تُستخدم هذه الهوية داخل نسخة المصنع. عند إصدار تطبيق مستقل للمصنع على App Store أو Google Play يتم توليد أصول المتجر من نفس ملف الهوية أثناء عملية البناء.", "This identity is used by the factory tenant. For a factory-specific App Store or Google Play release, store assets are generated from the same branding profile at build time.")}</p></div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+export const Route = createFileRoute("/_authenticated/branding")({ head: () => ({ meta: [{ title: "هوية المصنع · Factory OS" }] }), component: BrandingPage });
+type BrandForm={trade_name_ar:string;trade_name_en:string;logo_path:string;primary_color:string;secondary_color:string;watermark_text:string};
+const fallback:BrandForm={trade_name_ar:"مصنع المقرن للأثاث والديكور",trade_name_en:"ALMUQRIN FURNITURE FACTORY",logo_path:"/brand/almugren-furniture-logo.jpeg",primary_color:"#15293B",secondary_color:"#C0C7CF",watermark_text:"مصنع المقرن للأثاث والديكور"};
+function BrandingPage(){
+ const t=useT();const fetchIdentity=useServerFn(getCompanyIdentity);const saveIdentity=useServerFn(saveCompanyIdentity);const qc=useQueryClient();const {data}=useQuery({queryKey:["identity"],queryFn:()=>fetchIdentity({})});const [form,setForm]=useState<BrandForm>(fallback);
+ useEffect(()=>{const identity=(data?.identity??{}) as Record<string,unknown>;const company=(data?.company??{}) as Record<string,unknown>;setForm({trade_name_ar:String(identity.trade_name_ar||company.name_ar||fallback.trade_name_ar),trade_name_en:String(identity.trade_name_en||company.name_en||fallback.trade_name_en),logo_path:String(identity.logo_path||fallback.logo_path),primary_color:String(identity.primary_color||fallback.primary_color),secondary_color:String(identity.secondary_color||fallback.secondary_color),watermark_text:String(identity.watermark_text||fallback.watermark_text)})},[data]);
+ const save=useMutation({mutationFn:()=>saveIdentity({data:{...form,watermark_enabled:true}}),onSuccess:async()=>{toast.success(t("تم حفظ هوية المصنع","Factory brand saved"));await qc.invalidateQueries({queryKey:["identity"]});await qc.invalidateQueries({queryKey:["tenant-brand"]})},onError:(error)=>toast.error(error instanceof Error?error.message:t("تعذر الحفظ","Save failed"))});
+ function submit(e:FormEvent){e.preventDefault();save.mutate()} const set=(key:keyof BrandForm,value:string)=>setForm(current=>({...current,[key]:value}));
+ return <div className="space-y-6"><Card className="shadow-card"><CardHeader><CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5 text-primary"/>{t("هوية المصنع","Factory branding")}</CardTitle><CardDescription>{t("كل مصنع داخل المنصة يملك اسمه وشعاره وألوانه بصورة مستقلة.","Each factory tenant has an independent name, logo and colour identity.")}</CardDescription></CardHeader><CardContent><form onSubmit={submit} className="grid gap-4 md:grid-cols-2"><Field label={t("اسم المصنع بالعربية","Arabic factory name")} value={form.trade_name_ar} onChange={v=>set("trade_name_ar",v)}/><Field label={t("اسم المصنع بالإنجليزية","English factory name")} value={form.trade_name_en} onChange={v=>set("trade_name_en",v)} dir="ltr"/><div className="space-y-2 md:col-span-2"><Label>{t("مسار/رابط الشعار","Logo path / URL")}</Label><Input dir="ltr" value={form.logo_path} onChange={e=>set("logo_path",e.target.value)} placeholder="/brand/factory-logo.png"/><p className="text-xs text-muted-foreground">{t("يستخدم هذا الشعار في المنصة والمستندات والعلامة المائية وأيقونة الويب.","Used across the app, documents, watermark and web app icon.")}</p></div><div className="space-y-2"><Label>{t("اللون الأساسي","Primary colour")}</Label><div className="flex gap-2"><Input type="color" className="w-16 p-1" value={form.primary_color} onChange={e=>set("primary_color",e.target.value)}/><Input dir="ltr" value={form.primary_color} onChange={e=>set("primary_color",e.target.value)}/></div></div><div className="space-y-2"><Label>{t("اللون الثانوي","Secondary colour")}</Label><div className="flex gap-2"><Input type="color" className="w-16 p-1" value={form.secondary_color} onChange={e=>set("secondary_color",e.target.value)}/><Input dir="ltr" value={form.secondary_color} onChange={e=>set("secondary_color",e.target.value)}/></div></div><Field label={t("نص العلامة المائية","Watermark text")} value={form.watermark_text} onChange={v=>set("watermark_text",v)}/><div className="md:col-span-2 flex justify-end"><Button type="submit" disabled={save.isPending} className="gap-2"><Save className="h-4 w-4"/>{t("حفظ واعتماد الهوية","Save branding")}</Button></div></form></CardContent></Card><WatermarkSettings/><DocumentQrSettings/><Card className="shadow-card"><CardHeader><CardTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary"/>{t("معاينة هوية التطبيق","App identity preview")}</CardTitle></CardHeader><CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="grid h-28 w-28 place-items-center overflow-hidden rounded-3xl border bg-white p-2 shadow-elegant"><img src={form.logo_path} alt="Factory app icon" className="h-full w-full object-contain"/></div><div><div className="text-lg font-bold">{form.trade_name_ar}</div><div className="text-sm text-muted-foreground">{form.trade_name_en}</div><p className="mt-3 max-w-xl text-xs text-muted-foreground">{t("تُستخدم هذه الهوية داخل نسخة المصنع. عند إصدار تطبيق مستقل للمصنع على App Store أو Google Play يتم توليد أصول المتجر من نفس ملف الهوية أثناء عملية البناء.","This identity is used by the factory tenant. For a factory-specific App Store or Google Play release, store assets are generated from the same branding profile at build time.")}</p></div></CardContent></Card></div>
 }
-
-function Field({ label, value, onChange, dir }: { label: string; value: string; onChange: (value: string) => void; dir?: "ltr" | "rtl" }) {
-  return <div className="space-y-2"><Label>{label}</Label><Input dir={dir} value={value} onChange={(e) => onChange(e.target.value)} /></div>;
-}
+function Field({label,value,onChange,dir}:{label:string;value:string;onChange:(value:string)=>void;dir?:"ltr"|"rtl"}){return <div className="space-y-2"><Label>{label}</Label><Input dir={dir} value={value} onChange={e=>onChange(e.target.value)}/></div>}
