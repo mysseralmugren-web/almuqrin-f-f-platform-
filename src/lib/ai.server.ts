@@ -1,6 +1,7 @@
 import { AI_DEFAULT_MODEL, AI_IMAGE_MODEL, AI_TEXT_MODELS, type AiJobKind } from "./ai-constants";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
 export interface AiFileInput { mime_type: string; file_name: string; base64: string }
 
@@ -30,9 +31,9 @@ function contentBlocks(prompt: string, files: AiFileInput[]) {
   return blocks;
 }
 
-async function callGateway(body: Record<string, unknown>): Promise<GatewayResult> {
+async function callLovableGateway(body: Record<string, unknown>): Promise<GatewayResult> {
   const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("AI_PROVIDER_FAILED:missing_key");
+  if (!key) throw new Error("AI_PROVIDER_FAILED:missing_lovable_key");
   const started = Date.now();
   const res = await fetch(GATEWAY, {
     method: "POST",
@@ -61,6 +62,66 @@ async function callGateway(body: Record<string, unknown>): Promise<GatewayResult
     duration_ms: duration,
     model: String(json?.model ?? body["model"]),
   };
+}
+
+/**
+ * Uses the official OpenAI Responses API when an OpenAI server secret is
+ * configured. This keeps API keys on the server and supports PDF/image input.
+ */
+async function callOpenAIResponses(opts: {
+  prompt: string;
+  files?: AiFileInput[];
+}): Promise<GatewayResult> {
+  const key = process.env["OPENAI_API_KEY"];
+  if (!key) throw new Error("AI_PROVIDER_FAILED:missing_openai_key");
+
+  const input: Array<Record<string, unknown>> = [{ type: "input_text", text: opts.prompt }];
+  for (const file of opts.files ?? []) {
+    const dataUrl = `data:${file.mime_type};base64,${file.base64}`;
+    input.push(
+      file.mime_type === "application/pdf"
+        ? { type: "input_file", filename: file.file_name, file_data: dataUrl }
+        : { type: "input_image", image_url: dataUrl, detail: "auto" },
+    );
+  }
+
+  const started = Date.now();
+  const res = await fetch(OPENAI_RESPONSES_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: process.env["OPENAI_MODEL"] ?? "gpt-5-mini",
+      instructions: "أجب بالعربية عند الإمكان. أعد JSON صالحًا فقط وفق العقد المطلوب، بلا markdown أو سلسلة تفكير.",
+      input: [{ role: "user", content: input }],
+      text: { format: { type: "json_object" } },
+      max_output_tokens: 2200,
+    }),
+  });
+  const duration = Date.now() - started;
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 300);
+    if (res.status === 429) throw new Error("AI_PROVIDER_RATE_LIMIT");
+    if (res.status === 402) throw new Error("AI_PROVIDER_NO_CREDITS");
+    throw new Error(`AI_PROVIDER_FAILED:${res.status}:${detail}`);
+  }
+  const json: any = await res.json();
+  const usage = json?.usage ?? {};
+  return {
+    text: String(json?.output_text ?? ""),
+    images: [],
+    prompt_tokens: Number(usage.input_tokens ?? 0),
+    completion_tokens: Number(usage.output_tokens ?? 0),
+    cost_usd: 0,
+    duration_ms: duration,
+    model: String(json?.model ?? process.env["OPENAI_MODEL"] ?? "gpt-5-mini"),
+  };
+}
+
+async function callAiProvider(body: Record<string, unknown>, prompt: string, files: AiFileInput[] = []): Promise<GatewayResult> {
+  // Keep the existing Lovable provider as the first choice when configured.
+  // OpenAI is a server-only fallback and is never exposed to the browser.
+  if (process.env["LOVABLE_API_KEY"]) return callLovableGateway(body);
+  return callOpenAIResponses({ prompt, files });
 }
 
 function parseJson(text: string): any {
@@ -120,11 +181,11 @@ export async function runAnalysis(opts: {
     OUTPUT_CONTRACT,
   ].filter(Boolean).join("\n\n");
 
-  const result = await callGateway({
+  const result = await callAiProvider({
     model,
     messages: [{ role: "user", content: contentBlocks(prompt, opts.files) }],
     temperature: 0.1,
-  });
+  }, prompt, opts.files);
   const parsed = parseJson(result.text);
   return { parsed, usage: result };
 }
@@ -137,16 +198,19 @@ export async function runDesignConcept(opts: {
   withImage: boolean;
 }) {
   const identity = `هوية المنشأة: مصنع المقرن للأثاث والديكور. الألوان: ${opts.palette.join("، ") || "الكحلي والفضي"}.${opts.background ? ` الخلفية المطلوبة: ${opts.background}.` : ""}`;
-  const text = await callGateway({
+  const designPrompt = `${KIND_PROMPT.design_skill}\n\n${identity}\n\nالـ brief:\n${opts.brief}\n${opts.style ? `الطراز: ${opts.style}` : ""}\n\n${OUTPUT_CONTRACT}`;
+  const text = await callAiProvider({
     model: AI_DEFAULT_MODEL,
-    messages: [{ role: "user", content: `${KIND_PROMPT.design_skill}\n\n${identity}\n\nالـ brief:\n${opts.brief}\n${opts.style ? `الطراز: ${opts.style}` : ""}\n\n${OUTPUT_CONTRACT}` }],
+    messages: [{ role: "user", content: designPrompt }],
     temperature: 0.4,
-  });
+  }, designPrompt);
   const parsed = parseJson(text.text);
 
   let image: GatewayResult | null = null;
-  if (opts.withImage) {
-    image = await callGateway({
+  if (opts.withImage && process.env["LOVABLE_API_KEY"]) {
+    // Image generation remains on the existing image-capable gateway. The
+    // OpenAI fallback is deliberately used for document analysis only.
+    image = await callLovableGateway({
       model: AI_IMAGE_MODEL,
       messages: [{ role: "user", content: `${opts.brief}\n${opts.style ?? ""}\n${identity}\nصورة تصوّر مقترح تصميم أثاث احترافي، إضاءة استوديو، بدون نصوص.` }],
       modalities: ["image", "text"],
@@ -154,4 +218,3 @@ export async function runDesignConcept(opts: {
   }
   return { parsed, usage: text, image };
 }
-
