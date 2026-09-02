@@ -1,14 +1,14 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Sparkles, Inbox, Palette, Armchair, BarChart3, Settings2, ReceiptText, Landmark } from "lucide-react";
+import { Sparkles, Inbox, Palette, Armchair, BarChart3, Settings2, ReceiptText, Landmark, BrainCircuit } from "lucide-react";
 import { useT } from "@/lib/theme";
 
 export const Route = createFileRoute("/_authenticated/ai-assistant")({
   head: () => ({
     meta: [
       { title: "الموظف الذكي · AlMugren AI Factory OS" },
-      { name: "description", content: "AI employee: document, image and cost analysis with human review before any draft record." },
+      { name: "description", content: "AI employee: document, image, cost analysis and factory digital twin skills with human review controls." },
       { property: "og:title", content: "الموظف الذكي · AlMugren AI Factory OS" },
-      { property: "og:description", content: "Document, image and cost analysis with mandatory human review." },
+      { property: "og:description", content: "AI employee and factory digital twin with controlled skills and human approval." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -22,6 +22,7 @@ function AiLayout() {
 
   const tabs = [
     { to: "/ai-assistant", ar: "صندوق المهام", en: "Task inbox", icon: Inbox, exact: true },
+    { to: "/ai-assistant/skills", ar: "مهارات التوأم الرقمي", en: "Digital twin skills", icon: BrainCircuit, exact: false },
     { to: "/ai-assistant/invoice", ar: "فاتورة مورد ذكية", en: "Smart supplier invoice", icon: ReceiptText, exact: false },
     { to: "/ai-assistant/finance", ar: "Finance AI", en: "Finance AI", icon: Landmark, exact: false },
     { to: "/ai-assistant/design", ar: "تصميم ديزاين", en: "Design skill", icon: Palette, exact: false },
@@ -42,7 +43,7 @@ function AiLayout() {
           </div>
           <h1 className="mt-0.5 truncate text-2xl font-bold sm:text-3xl">{t("الموظف الذكي", "AI employee")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("تحليل المستندات والصور والتكاليف — كل نتيجة مسودة تحتاج مراجعة واعتماد", "Document, image and cost analysis — every result is a draft pending human approval")}
+            {t("تحليل المستندات والصور والتكاليف ومحاكاة التوأم الرقمي — مع اعتماد بشري للقرارات الحساسة", "Document, image and cost analysis plus digital-twin simulation — with human approval for sensitive decisions")}
           </p>
         </div>
       </div>
