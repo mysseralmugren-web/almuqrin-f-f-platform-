@@ -15,12 +15,13 @@ import {
 import { MODULES, GROUP_LABELS, type ModuleDef } from "@/lib/modules";
 import { useT, useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
-import { Factory } from "lucide-react";
+import { useTenantBrand } from "@/lib/tenant-branding";
 
 export function AppSidebar() {
   const t = useT();
   const { lang } = useTheme();
   const { user } = useAuth();
+  const brand = useTenantBrand();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -35,13 +36,13 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" side={lang === "ar" ? "right" : "left"}>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-2 py-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg gradient-accent shadow-elegant">
-            <Factory className="h-5 w-5 text-primary" />
+          <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-white shadow-elegant">
+            <img src={brand.logo} alt={lang === "ar" ? brand.nameAr : brand.nameEn} className="h-full w-full object-contain" />
           </div>
           {!collapsed && (
             <div className="min-w-0 leading-tight">
               <div className="truncate text-sm font-bold text-sidebar-foreground">
-                {t("المقرن AI", "AlMugren AI")}
+                {lang === "ar" ? brand.nameAr : brand.nameEn}
               </div>
               <div className="truncate text-[11px] text-sidebar-foreground/70">
                 {t("منظومة المصنع الذكية", "Factory OS")}
@@ -64,16 +65,10 @@ export function AppSidebar() {
                   const Icon = m.icon;
                   return (
                     <SidebarMenuItem key={m.key}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={active}
-                        tooltip={lang === "ar" ? m.labelAr : m.labelEn}
-                      >
+                      <SidebarMenuButton asChild isActive={active} tooltip={lang === "ar" ? m.labelAr : m.labelEn}>
                         <Link to={m.path} className="flex items-center gap-3">
                           <Icon className="h-4 w-4 shrink-0" />
-                          <span className="truncate">
-                            {lang === "ar" ? m.labelAr : m.labelEn}
-                          </span>
+                          <span className="truncate">{lang === "ar" ? m.labelAr : m.labelEn}</span>
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
