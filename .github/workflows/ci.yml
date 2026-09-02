@@ -33,6 +33,9 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Finance AI acceptance
+        run: node scripts/finance-ai/validate-suite.mjs
+
       - name: Static security regressions
         run: bun run test:security:static
 
