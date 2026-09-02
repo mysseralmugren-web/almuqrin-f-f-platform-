@@ -46,6 +46,7 @@ export const MODULES: ModuleDef[] = [
   { key: "purchasing", path: "/purchasing", labelAr: "المشتريات", labelEn: "Purchasing", icon: ShoppingCart, group: "commercial" },
   { key: "sales", path: "/sales", labelAr: "المبيعات", labelEn: "Sales", icon: TrendingUp, group: "commercial" },
   { key: "quotations", path: "/quotations", labelAr: "عروض الأسعار", labelEn: "Quotations", icon: FileText, group: "commercial" },
+  { key: "store-admin", path: "/store-admin", labelAr: "اعتماد المتجر", labelEn: "Store Approvals", icon: ShoppingCart, group: "commercial", roles: ["super_admin", "factory_owner", "general_manager"] },
   { key: "invoices", path: "/invoices", labelAr: "الفواتير الضريبية", labelEn: "Tax Invoices", icon: FileText, group: "finance" },
   { key: "delivery", path: "/delivery-notes", labelAr: "محاضر التسليم", labelEn: "Delivery Notes", icon: Truck, group: "operations" },
   { key: "crm", path: "/crm/leads", labelAr: "إدارة العملاء CRM", labelEn: "CRM", icon: Users, group: "commercial" },
