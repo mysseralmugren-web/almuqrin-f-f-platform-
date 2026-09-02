@@ -5,6 +5,7 @@ export type FinanceSkillId =
   | "manage-factory-expenses"
   | "invoice-processing-ai"
   | "saudi-vat-compliance"
+  | "quarterly-zatca-financial-statements"
   | "financial-planning-ai"
   | "match-invoice-to-purchase-order"
   | "factory-cost-accounting"
@@ -32,6 +33,7 @@ export const FINANCE_AI_SKILLS: FinanceSkillDefinition[] = [
   { id: "manage-factory-expenses", nameAr: "إدارة مصروفات المصنع", nameEn: "Factory Expense Management", category: "invoice", descriptionAr: "تصنيف المصروف وربطه بالمشروع أو أمر التصنيع ومركز التكلفة.", dependencies: ["saudi-vat-compliance", "smart-expense-coding", "detect-financial-anomalies"], humanApprovalRequired: true, highImpactAction: true },
   { id: "match-invoice-to-purchase-order", nameAr: "مطابقة الفاتورة بأمر الشراء", nameEn: "Invoice to PO Matching", category: "invoice", descriptionAr: "مطابقة الفاتورة مع أمر الشراء والاستلام والمدفوعات السابقة.", dependencies: ["detect-financial-anomalies"], humanApprovalRequired: true, highImpactAction: true },
   { id: "saudi-vat-compliance", nameAr: "الضريبة والامتثال السعودي", nameEn: "Saudi VAT Compliance", category: "tax", descriptionAr: "فحص ضريبة المدخلات والمخرجات واكتمال الفاتورة الضريبية.", dependencies: [], humanApprovalRequired: true, highImpactAction: true },
+  { id: "quarterly-zatca-financial-statements", nameAr: "القوائم المالية الربع سنوية · زاتكا", nameEn: "Quarterly ZATCA Financial Statements", category: "reporting", descriptionAr: "إعداد قائمة المركز المالي والربح أو الخسارة والتدفقات النقدية والتغيرات في حقوق الملكية مع جداول VAT والمطابقات الزكوية/الضريبية المرجعية وبوابة اعتماد بشري.", dependencies: ["analyze-financial-reports", "saudi-vat-compliance", "project-profitability", "cashflow-forecast", "detect-financial-anomalies", "financial-control-agent"], humanApprovalRequired: true, highImpactAction: true },
   { id: "smart-expense-coding", nameAr: "الترميز المحاسبي الذكي", nameEn: "Smart Expense Coding", category: "control", descriptionAr: "اقتراح الحساب المحاسبي ومركز التكلفة من دليل الحسابات والسجل المعتمد.", dependencies: [], humanApprovalRequired: true, highImpactAction: true },
   { id: "detect-financial-anomalies", nameAr: "كشف الأخطاء والشذوذ المالي", nameEn: "Financial Anomaly Detection", category: "control", descriptionAr: "كشف التكرار والأسعار غير المنطقية والتجاوزات والتغييرات الحساسة.", dependencies: [], humanApprovalRequired: true, highImpactAction: false },
   { id: "financial-control-agent", nameAr: "وكيل الرقابة المالية", nameEn: "Financial Control Agent", category: "control", descriptionAr: "بوابة منع موحدة قبل أي إجراء مالي عالي التأثير.", dependencies: ["detect-financial-anomalies"], humanApprovalRequired: true, highImpactAction: true },
@@ -49,4 +51,5 @@ export const FINANCE_AI_PIPELINES = {
   expense: ["manage-factory-expenses", "saudi-vat-compliance", "smart-expense-coding", "detect-financial-anomalies", "financial-control-agent"] as FinanceSkillId[],
   manufacturing: ["factory-cost-accounting", "project-profitability", "analyze-financial-reports"] as FinanceSkillId[],
   liquidity: ["accounts-receivable-ai", "accounts-payable-ai", "cashflow-forecast", "financial-planning-ai"] as FinanceSkillId[],
+  quarterlyCompliance: ["analyze-financial-reports", "project-profitability", "cashflow-forecast", "saudi-vat-compliance", "detect-financial-anomalies", "quarterly-zatca-financial-statements", "financial-control-agent"] as FinanceSkillId[],
 };
