@@ -1,7 +1,7 @@
 {
   "suite": "almuqrin-finance-ai-suite",
-  "version": "1.0.0",
-  "skill_count": 15,
+  "version": "1.2.0",
+  "skill_count": 17,
   "skills": [
     "finance-ai-orchestrator",
     "analyze-financial-reports",
@@ -9,6 +9,8 @@
     "manage-factory-expenses",
     "invoice-processing-ai",
     "saudi-vat-compliance",
+    "quarterly-zatca-financial-statements",
+    "bank-statement-reconciliation-audit",
     "financial-planning-ai",
     "match-invoice-to-purchase-order",
     "factory-cost-accounting",
@@ -23,14 +25,19 @@
     "supplier_invoice": ["invoice-processing-ai", "match-invoice-to-purchase-order", "saudi-vat-compliance", "smart-expense-coding", "detect-financial-anomalies", "financial-control-agent"],
     "expense": ["manage-factory-expenses", "saudi-vat-compliance", "smart-expense-coding", "detect-financial-anomalies", "financial-control-agent"],
     "manufacturing": ["factory-cost-accounting", "project-profitability", "analyze-financial-reports"],
-    "liquidity": ["accounts-receivable-ai", "accounts-payable-ai", "cashflow-forecast", "financial-planning-ai"]
+    "liquidity": ["accounts-receivable-ai", "accounts-payable-ai", "cashflow-forecast", "financial-planning-ai"],
+    "bank_reconciliation": ["bank-statement-reconciliation-audit", "smart-expense-coding", "accounts-receivable-ai", "accounts-payable-ai", "detect-financial-anomalies", "analyze-financial-reports", "financial-control-agent"],
+    "quarterly_compliance": ["analyze-financial-reports", "project-profitability", "cashflow-forecast", "saudi-vat-compliance", "detect-financial-anomalies", "quarterly-zatca-financial-statements", "financial-control-agent"]
   },
   "governance": {
     "tenant_isolation": true,
     "human_approval_for_high_impact": true,
     "auto_payment": false,
     "auto_journal_posting": false,
+    "auto_bank_balance_adjustment": false,
+    "auto_month_close": false,
     "auto_iban_change": false,
+    "auto_zatca_submission": false,
     "financial_control_gate_required": true
   }
 }
