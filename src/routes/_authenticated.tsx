@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app/app-sidebar";
@@ -12,7 +12,7 @@ import { moduleKeyForPath } from "@/lib/modules";
 
 export const Route = createFileRoute("/_authenticated")({ component: AuthenticatedLayout });
 
-function PermissionBoundary({ children }: { children: React.ReactNode }) {
+function PermissionBoundary({ children }: { children: ReactNode }) {
   const location=useLocation();
   const { loading, can }=useModulePermissions();
   if(loading) return <div className="grid min-h-[40vh] place-items-center text-sm text-muted-foreground">جارٍ تحميل صلاحيات الدور…</div>;
