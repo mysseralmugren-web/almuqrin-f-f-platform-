@@ -21,10 +21,12 @@ function AuthenticatedLayout() {
   }, [isAuthenticated, loading, navigate]);
 
   if (loading || !isAuthenticated) return null;
+  const isPrint = location.pathname.startsWith("/print/");
+  const isGeneratedDocument = /^\/documents\/[0-9a-f-]{36}$/i.test(location.pathname);
 
   return (
     <TenantBrandingProvider>
-      {location.pathname.startsWith("/print/") ? (
+      {isPrint ? (
         <main className="min-h-screen bg-white p-4 text-slate-950 print:p-0">
           <Outlet />
           <PrintVerificationQr pathname={location.pathname} />
@@ -39,6 +41,7 @@ function AuthenticatedLayout() {
                 <Outlet />
               </main>
             </SidebarInset>
+            {isGeneratedDocument && <PrintVerificationQr pathname={location.pathname} />}
           </div>
         </SidebarProvider>
       )}
