@@ -7,8 +7,8 @@ const must = (ok, msg) => { if (!ok) throw new Error(msg); };
 const exists = (p) => fs.existsSync(path.join(root, p));
 
 const tests = [
-  ["01 skill count is exactly 16", () => must(manifest.skill_count === 16 && manifest.skills.length === 16, "FINANCE_SKILL_COUNT_INVALID")],
-  ["02 skill ids are unique", () => must(new Set(manifest.skills).size === 16, "FINANCE_SKILL_DUPLICATE")],
+  ["01 skill count is exactly 17", () => must(manifest.skill_count === 17 && manifest.skills.length === 17, "FINANCE_SKILL_COUNT_INVALID")],
+  ["02 skill ids are unique", () => must(new Set(manifest.skills).size === 17, "FINANCE_SKILL_DUPLICATE")],
   ["03 every skill has SKILL.md", () => must(manifest.skills.every((s) => exists(`skills/finance/${s}/SKILL.md`)), "FINANCE_SKILL_FILE_MISSING")],
   ["04 orchestrator exists", () => must(manifest.skills.includes("finance-ai-orchestrator"), "FINANCE_ORCHESTRATOR_MISSING")],
   ["05 control agent exists", () => must(manifest.skills.includes("financial-control-agent"), "FINANCE_CONTROL_AGENT_MISSING")],
@@ -22,6 +22,8 @@ const tests = [
   ["13 quarterly ZATCA statements skill exists", () => must(manifest.skills.includes("quarterly-zatca-financial-statements"), "QUARTERLY_ZATCA_SKILL_MISSING")],
   ["14 quarterly compliance pipeline ends with control gate", () => must(manifest.pipelines.quarterly_compliance?.includes("quarterly-zatca-financial-statements") && manifest.pipelines.quarterly_compliance.at(-1) === "financial-control-agent", "QUARTERLY_COMPLIANCE_GATE_INVALID")],
   ["15 no automatic ZATCA submission", () => must(manifest.governance.auto_zatca_submission === false, "AUTO_ZATCA_SUBMISSION_MUST_BE_DISABLED")],
+  ["16 bank reconciliation skill exists and pipeline ends with control gate", () => must(manifest.skills.includes("bank-statement-reconciliation-audit") && manifest.pipelines.bank_reconciliation?.at(-1) === "financial-control-agent", "BANK_RECONCILIATION_GATE_INVALID")],
+  ["17 no automatic bank balance adjustment or month close", () => must(manifest.governance.auto_bank_balance_adjustment === false && manifest.governance.auto_month_close === false, "AUTO_BANK_RECONCILIATION_ACTION_MUST_BE_DISABLED")],
 ];
 
 for (const [name, run] of tests) { run(); console.log(`✓ ${name}`); }
