@@ -118,10 +118,11 @@ async function callOpenAIResponses(opts: {
 }
 
 async function callAiProvider(body: Record<string, unknown>, prompt: string, files: AiFileInput[] = []): Promise<GatewayResult> {
-  // Keep the existing Lovable provider as the first choice when configured.
-  // OpenAI is a server-only fallback and is never exposed to the browser.
+  // Prefer the explicitly configured OpenAI secret for document analysis.
+  // Both provider secrets remain server-only and never reach the browser.
+  if (process.env["OPENAI_API_KEY"]) return callOpenAIResponses({ prompt, files });
   if (process.env["LOVABLE_API_KEY"]) return callLovableGateway(body);
-  return callOpenAIResponses({ prompt, files });
+  throw new Error("AI_PROVIDER_FAILED:missing_provider_key");
 }
 
 function parseJson(text: string): any {
