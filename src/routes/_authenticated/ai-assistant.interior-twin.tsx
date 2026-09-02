@@ -103,19 +103,35 @@ function InteriorTwinConsole() {
       if (!activeId) throw new Error("أنشئ أو اختر مشروع توأم رقمي أولاً");
       let config: any = {};
       try { config = JSON.parse(configuration || "{}"); } catch { throw new Error("JSON التهيئة غير صالح"); }
-      const body: any = { action: "run-skill", twinProjectId: activeId, skillKey, prompt, attachments };
+      const body: any = {
+        twinProjectId: activeId,
+        skillKey,
+        prompt,
+        attachments,
+        targetEntity: "interior_twin_project",
+        targetId: activeId,
+        environment: "production",
+      };
       if (assetUrl) body.assetUrl = assetUrl;
       if (skillKey === "real_time_design_configurator") body.configuration = config;
-      const { data, error } = await supabase.functions.invoke("interior-digital-twin", { body });
+      const { data, error } = await supabase.functions.invoke("ai-gateway", { body });
       if (error) throw error;
       return data;
     },
     onSuccess: async (data) => {
-      setLatestResult(data);
-      toast.success(data?.needsReview ? "اكتملت المرحلة وبانتظار الاعتماد" : "اكتملت المرحلة");
+      const downstream = data?.result ?? {};
+      const resolved = {
+        ...downstream,
+        gatewayRunId: data?.gatewayRunId,
+        traceId: data?.traceId,
+        retrievedChunks: data?.retrievedChunks ?? 0,
+        needsReview: data?.needsReview ?? downstream?.needsReview,
+      };
+      setLatestResult(resolved);
+      toast.success(resolved.needsReview ? "اكتملت المرحلة عبر AI Gateway وبانتظار الاعتماد" : "اكتملت المرحلة عبر AI Gateway");
       await Promise.all([qc.invalidateQueries({ queryKey: ["interior-twin-projects"] }), qc.invalidateQueries({ queryKey: ["interior-twin-runs", activeId] })]);
     },
-    onError: (e: any) => toast.error(e?.message ?? "فشل تنفيذ المرحلة"),
+    onError: (e: any) => toast.error(e?.message ?? "فشل تنفيذ المرحلة عبر AI Gateway"),
   });
 
   const approveM = useMutation({
@@ -179,12 +195,12 @@ function InteriorTwinConsole() {
           <div className="flex flex-wrap items-center gap-3"><label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"><Upload className="h-4 w-4" />رفع صور / PDF / فيديو<input className="hidden" type="file" multiple accept="image/*,video/*,application/pdf" onChange={(e) => onFiles(e.target.files)} /></label><span className="text-xs text-muted-foreground">الفيديو يُحوّل محليًا إلى لقطات ممثلة قبل الإرسال للتحليل.</span></div>
           {attachments.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{attachments.map((a, i) => <Badge key={`${a.name}-${i}`} variant="outline">{a.name}</Badge>)}</div>}
         </div>
-        <Button onClick={() => runM.mutate()} disabled={runM.isPending || !activeId}><Play className="ml-2 h-4 w-4" />{runM.isPending ? "جاري تنفيذ المرحلة..." : "تشغيل على مشروع التوأم"}</Button>
-        {latestResult && <div className="rounded-xl border p-4"><div className="mb-2 flex flex-wrap gap-2"><Badge>{latestResult.skillKey}</Badge><Badge variant="outline">{latestResult.stage}</Badge>{latestResult.needsReview && <Badge variant="destructive">بانتظار اعتماد</Badge>}{latestResult.confidence != null && <Badge variant="secondary">الثقة {Math.round(latestResult.confidence * 100)}%</Badge>}</div><pre className="max-h-[520px] overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-3 text-xs" dir="rtl">{JSON.stringify(latestResult.result, null, 2)}</pre></div>}
+        <Button onClick={() => runM.mutate()} disabled={runM.isPending || !activeId}><Play className="ml-2 h-4 w-4" />{runM.isPending ? "جاري تنفيذ المرحلة..." : "تشغيل عبر Cloud AI Gateway"}</Button>
+        {latestResult && <div className="rounded-xl border p-4"><div className="mb-2 flex flex-wrap gap-2"><Badge>{latestResult.skillKey}</Badge><Badge variant="outline">{latestResult.stage}</Badge>{latestResult.needsReview && <Badge variant="destructive">بانتظار اعتماد</Badge>}{latestResult.confidence != null && <Badge variant="secondary">الثقة {Math.round(latestResult.confidence * 100)}%</Badge>}<Badge variant="outline">ذاكرة {latestResult.retrievedChunks ?? 0}</Badge>{latestResult.traceId && <Badge variant="outline">Trace {String(latestResult.traceId).slice(0, 8)}</Badge>}</div><pre className="max-h-[520px] overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-3 text-xs" dir="rtl">{JSON.stringify(latestResult.result, null, 2)}</pre></div>}
       </CardContent>
     </Card>
 
-    <Card><CardHeader><CardTitle className="text-base">تكامل الأدوات</CardTitle></CardHeader><CardContent className="grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-4"><Tool name="OpenAI Multimodal" use="Room/DNA/Materials/Manufacturability/QC"/><Tool name="Interior Design Studio" use="Space planning + Design AI"/><Tool name="Autodesk APS" use="CAD / Shop Drawings / CNC handoff"/><Tool name="Blender Render Engine" use="Render previews + AR/VR scene prep"/><Tool name="Smart Costing" use="BOM + Cost estimation"/><Tool name="Nesting Engine" use="Cut optimization / kerf / waste"/><Tool name="WebAR" use="GLB + USDZ true-scale placement"/><Tool name="WebXR" use="VR walkthrough / 360 scenes"/></CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-base">تكامل الأدوات السحابية</CardTitle></CardHeader><CardContent className="grid gap-2 text-sm md:grid-cols-2 xl:grid-cols-4"><Tool name="Cloud AI Gateway" use="Skills routing + trace + approvals"/><Tool name="Vector Memory" use="Approved factory knowledge + semantic retrieval"/><Tool name="OpenAI Multimodal" use="Room/DNA/Materials/Manufacturability/QC"/><Tool name="Interior Design Studio" use="Space planning + Design AI"/><Tool name="Autodesk APS" use="CAD / Shop Drawings / CNC handoff"/><Tool name="Blender Render Engine" use="Render previews + AR/VR scene prep"/><Tool name="Smart Costing" use="BOM + Cost estimation"/><Tool name="Nesting Engine" use="Cut optimization / kerf / waste"/><Tool name="WebAR" use="GLB + USDZ true-scale placement"/><Tool name="WebXR" use="VR walkthrough / 360 scenes"/></CardContent></Card>
   </div>;
 }
 
