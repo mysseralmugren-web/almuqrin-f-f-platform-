@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createHmac } from "node:crypto";
 import { z } from "zod";
 
 type Ctx = { supabase: any; userId: string };
@@ -25,17 +24,7 @@ export const getDocumentQrSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const c = context as Ctx;
     const company_id = await companyOf(c);
-    const { data, error } = await c.supabase.from("document_qr_settings").select("*").eq("company_id", company_id).maybeSingle();
-    if (error) throw new Error(error.message);
-    return data ?? {
-      company_id,
-      enabled: true,
-      position: "footer",
-      size_px: 96,
-      label_ar: "امسح للتحقق من صحة المستند",
-      label_en: "Scan to verify this document",
-      show_internal_on_tax_invoice: true,
-    };
+    return getDocumentQrSettingsForContext(c, company_id);
   });
 
 const settingsSchema = z.object({
@@ -68,16 +57,6 @@ const qrRequestSchema = z.object({
   title: z.string().max(200).optional(),
 });
 
-function secret(): string {
-  const value = process.env["DOCUMENT_QR_SECRET"];
-  if (!value || value.length < 32) throw new Error("DOCUMENT_QR_SECRET_MISSING");
-  return value;
-}
-
-function b64url(text: string): string {
-  return Buffer.from(text, "utf8").toString("base64url");
-}
-
 export const getPrintVerificationQr = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => qrRequestSchema.parse(input))
@@ -97,15 +76,9 @@ export const getPrintVerificationQr = createServerFn({ method: "POST" })
       title: data.title ?? null,
       generated_at: new Date().toISOString(),
     };
-    const token = b64url(JSON.stringify(payload));
-    const sig = createHmac("sha256", secret()).update(token).digest("base64url");
-    const base = process.env["PUBLIC_APP_URL"]?.replace(/\/$/, "") ?? "https://almuqrinfurniturefactory.com";
-    return {
-      enabled: true as const,
-      url: `${base}/verify/document?t=${encodeURIComponent(token)}&s=${encodeURIComponent(sig)}`,
-      settings,
-      payload,
-    };
+    const { createVerificationToken } = await import("@/lib/document-qr.server");
+    const { token, sig } = createVerificationToken(payload);
+    return { enabled: true as const, token, sig, settings, payload };
   });
 
 async function getDocumentQrSettingsForContext(c: Ctx, company_id: string) {
