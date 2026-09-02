@@ -20,6 +20,7 @@ import {
   FileStack,
   FolderOpen,
   Plug,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "./auth";
@@ -30,7 +31,7 @@ export interface ModuleDef {
   labelAr: string;
   labelEn: string;
   icon: LucideIcon;
-  roles?: Role[]; // undefined = all authenticated
+  roles?: Role[];
   group: "core" | "operations" | "commercial" | "finance" | "system";
 }
 
@@ -54,6 +55,7 @@ export const MODULES: ModuleDef[] = [
   { key: "hr", path: "/hr", labelAr: "الموارد البشرية", labelEn: "Human Resources", icon: UserCog, group: "finance", roles: ["super_admin", "factory_owner", "general_manager", "hr"] },
   { key: "ai-assistant", path: "/ai-assistant", labelAr: "المساعد الذكي", labelEn: "AI Assistant", icon: Sparkles, group: "system" },
   { key: "documents", path: "/documents", labelAr: "مركز المستندات والهوية", labelEn: "Documents & Identity", icon: FileStack, group: "system" },
+  { key: "branding", path: "/branding", labelAr: "هوية المصنع", labelEn: "Factory Branding", icon: Palette, group: "system", roles: ["super_admin", "factory_owner", "general_manager"] },
   { key: "files", path: "/files", labelAr: "الملفات والصور", labelEn: "Files & Images", icon: FolderOpen, group: "system" },
   { key: "integrations", path: "/integrations", labelAr: "التكاملات والإشعارات", labelEn: "Integrations & Notifications", icon: Plug, group: "system", roles: ["super_admin", "factory_owner", "general_manager", "sales_manager", "sales_employee", "project_manager"] },
   { key: "reports", path: "/reports", labelAr: "التقارير", labelEn: "Reports", icon: BarChart3, group: "system" },
