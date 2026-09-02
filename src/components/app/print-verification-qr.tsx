@@ -6,7 +6,7 @@ import { getPrintVerificationQr } from "@/lib/document-qr.functions";
 
 export function PrintVerificationQr({ pathname }: { pathname: string }) {
   const getQr = useServerFn(getPrintVerificationQr);
-  const title = useMemo(() => document?.title || "", []);
+  const title = useMemo(() => (typeof document !== "undefined" ? document.title : ""), []);
   const { data } = useQuery({
     queryKey: ["print-verification-qr", pathname],
     queryFn: () => getQr({ data: { pathname, title } }),
@@ -15,11 +15,12 @@ export function PrintVerificationQr({ pathname }: { pathname: string }) {
   const [src, setSrc] = useState<string>("");
 
   useEffect(() => {
-    if (!data?.enabled || !data.url) {
+    if (!data?.enabled || !data.token || !data.sig || typeof window === "undefined") {
       setSrc("");
       return;
     }
-    QRCode.toDataURL(data.url, { errorCorrectionLevel: "M", margin: 1, width: data.settings.size_px })
+    const url = `${window.location.origin}/verify/document?t=${encodeURIComponent(data.token)}&s=${encodeURIComponent(data.sig)}`;
+    QRCode.toDataURL(url, { errorCorrectionLevel: "M", margin: 1, width: data.settings.size_px })
       .then(setSrc)
       .catch(() => setSrc(""));
   }, [data]);
