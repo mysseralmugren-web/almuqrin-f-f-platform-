@@ -4,116 +4,56 @@ import { getRequest } from '@tanstack/react-start/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 
-const APPROVED_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
-const APPROVED_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
+const PRODUCTION_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
+const PRODUCTION_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
+const STAGING_SUPABASE_URL = 'https://selljopynsmecxqzgpra.supabase.co';
+const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_n0T9ibtda16AK6QDDV1uhA_g6u6abda';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
 
+function isPreviewHostname(hostname: string): boolean {
+  const value = hostname.toLowerCase();
+  return value.endsWith('.vercel.app') && value.includes('-git-') && !value.includes('-git-main-');
+}
+
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
-    const headers = new Headers(
-      typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined,
-    );
-
-    if (init?.headers) {
-      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-    }
-
-    if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
-      headers.delete('Authorization');
-    }
-
+    const headers = new Headers(typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined);
+    if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) headers.delete('Authorization');
     headers.set('apikey', supabaseKey);
     return fetch(input, { ...init, headers });
   };
 }
 
-export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
-  async ({ next }) => {
-    // Auth middleware is pinned to the same approved project as the browser client.
-    const SUPABASE_URL = APPROVED_SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = APPROVED_SUPABASE_PUBLISHABLE_KEY;
+export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(async ({ next }) => {
+  const request = getRequest();
+  if (!request?.headers) throw new Error('Unauthorized: No request headers available');
 
-    const request = getRequest();
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  const preview = process.env['VERCEL_ENV'] === 'preview' || isPreviewHostname(host.split(':')[0] || '');
+  const SUPABASE_URL = preview ? STAGING_SUPABASE_URL : PRODUCTION_SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY = preview ? STAGING_SUPABASE_PUBLISHABLE_KEY : PRODUCTION_SUPABASE_PUBLISHABLE_KEY;
 
-    if (!request?.headers) {
-      throw new Error('Unauthorized: No request headers available');
-    }
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) throw new Error('Unauthorized: No valid authorization header provided');
+  const token = authHeader.slice(7);
+  if (!token || token.split('.').length !== 3) throw new Error('Unauthorized: Invalid token');
 
-    const authHeader = request.headers.get('authorization');
+  const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    global: { fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY), headers: { Authorization: `Bearer ${token}` } },
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
 
-    if (!authHeader) {
-      throw new Error('Unauthorized: No authorization header provided');
-    }
+  const { data, error } = await supabase.auth.getClaims(token);
+  if (error || !data?.claims?.sub) throw new Error('Unauthorized: Invalid token');
+  const userId = data.claims.sub;
+  const { data: profile, error: profileError } = await supabase.from('profiles').select('company_id, is_active').eq('id', userId).maybeSingle();
+  if (profileError || !profile?.is_active || !profile.company_id) throw new Error('Unauthorized: Account is disabled or unassigned');
+  const { data: effectiveRole, error: roleError } = await supabase.from('user_roles').select('id').eq('user_id', userId).eq('company_id', profile.company_id).limit(1).maybeSingle();
+  if (roleError || !effectiveRole) throw new Error('Unauthorized: No active company role');
 
-    if (!authHeader.startsWith('Bearer ')) {
-      throw new Error('Unauthorized: Only Bearer tokens are supported');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) {
-      throw new Error('Unauthorized: No token provided');
-    }
-
-    if (token.split('.').length !== 3) {
-      throw new Error('Unauthorized: Invalid token');
-    }
-
-    const supabase = createClient<Database>(
-      SUPABASE_URL,
-      SUPABASE_PUBLISHABLE_KEY,
-      {
-        global: {
-          fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-        auth: {
-          storage: undefined,
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      }
-    );
-
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) {
-      throw new Error('Unauthorized: Invalid token');
-    }
-
-    if (!data.claims.sub) {
-      throw new Error('Unauthorized: No user ID found in token');
-    }
-
-    const userId = data.claims.sub;
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('company_id, is_active')
-      .eq('id', userId)
-      .maybeSingle();
-    if (profileError || !profile?.is_active || !profile.company_id) {
-      throw new Error('Unauthorized: Account is disabled or unassigned');
-    }
-    const { data: effectiveRole, error: roleError } = await supabase
-      .from('user_roles')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('company_id', profile.company_id)
-      .limit(1)
-      .maybeSingle();
-    if (roleError || !effectiveRole) {
-      throw new Error('Unauthorized: No active company role');
-    }
-
-    return next({
-      context: {
-        supabase,
-        userId,
-        claims: data.claims,
-      },
-    });
-  },
-);
+  return next({ context: { supabase, userId, claims: data.claims } });
+});
