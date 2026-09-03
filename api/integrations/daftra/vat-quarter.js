@@ -37,31 +37,35 @@ function pick(obj, keys) {
   return null;
 }
 
-function normalizeSalesRecord(row) {
-  const doc = row?.Invoice || row?.invoice || row || {};
-  return {
-    id: pick(doc, ['id']),
-    no: pick(doc, ['no', 'invoice_no', 'code']),
-    date: pick(doc, ['date', 'issue_date', 'created']),
-    subtotal: toNumber(pick(doc, ['summary_subtotal', 'subtotal', 'total_before_tax'])),
-    total: toNumber(pick(doc, ['summary_total', 'total', 'grand_total'])),
-    tax: toNumber(pick(doc, ['summary_tax', 'tax_total', 'total_tax', 'vat_total'])),
-    draft: pick(doc, ['draft']),
-    type: pick(doc, ['type']),
-  };
+function unwrap(row, wrappers) {
+  for (const key of wrappers) {
+    if (row?.[key]) return row[key];
+  }
+  return row || {};
 }
 
-function normalizePurchaseRecord(row) {
-  const doc = row?.PurchaseInvoice || row?.purchase_invoice || row?.Invoice || row || {};
+function normalizeRecord(row, wrappers) {
+  const doc = unwrap(row, wrappers);
+  const subtotal = toNumber(pick(doc, [
+    'summary_subtotal', 'subtotal', 'total_before_tax', 'amount_before_tax', 'net_amount', 'amount'
+  ]));
+  const total = toNumber(pick(doc, [
+    'summary_total', 'total', 'grand_total', 'total_amount', 'amount_after_tax'
+  ]));
+  let tax = toNumber(pick(doc, [
+    'summary_tax', 'tax_total', 'total_tax', 'vat_total', 'tax_amount', 'vat_amount'
+  ]));
+  if (!tax && total >= subtotal && total > 0) tax = total - subtotal;
+
   return {
     id: pick(doc, ['id']),
-    no: pick(doc, ['no', 'invoice_no', 'code']),
-    date: pick(doc, ['date', 'issue_date', 'created']),
-    subtotal: toNumber(pick(doc, ['summary_subtotal', 'subtotal', 'total_before_tax'])),
-    total: toNumber(pick(doc, ['summary_total', 'total', 'grand_total'])),
-    tax: toNumber(pick(doc, ['summary_tax', 'tax_total', 'total_tax', 'vat_total'])),
+    no: pick(doc, ['no', 'invoice_no', 'code', 'number']),
+    date: pick(doc, ['date', 'issue_date', 'created', 'expense_date']),
+    subtotal,
+    total,
+    tax,
     draft: pick(doc, ['draft']),
-    type: pick(doc, ['type']),
+    type: pick(doc, ['type', 'document_type']),
   };
 }
 
@@ -129,6 +133,12 @@ function summarize(records) {
   };
 }
 
+function safeSummary(result, wrappers) {
+  if (!result?.ok) return { available: false, status: result?.status ?? null, count: 0, subtotal: 0, tax: 0, total: 0 };
+  const rows = result.records.map((row) => normalizeRecord(row, wrappers));
+  return { available: true, status: result.status, ...summarize(rows), rows_received: rows.length, truncated: Boolean(result.truncated) };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('allow', 'GET');
@@ -147,45 +157,60 @@ export default async function handler(req, res) {
     return send(res, 400, { ok: false, error: 'invalid_date_format' });
   }
 
-  const [salesResult, purchasesResult] = await Promise.all([
+  const [salesResult, purchasesResult, expensesResult, creditNotesResult, purchaseRefundsResult] = await Promise.all([
     fetchLegacyList(baseUrl, apiKey, 'invoices', dateFrom, dateTo),
     fetchLegacyList(baseUrl, apiKey, 'purchase_invoices', dateFrom, dateTo),
+    fetchLegacyList(baseUrl, apiKey, 'expenses', dateFrom, dateTo),
+    fetchLegacyList(baseUrl, apiKey, 'credit_notes', dateFrom, dateTo),
+    fetchLegacyList(baseUrl, apiKey, 'purchase_refunds', dateFrom, dateTo),
   ]);
 
-  if (!salesResult.ok || !purchasesResult.ok) {
+  if (!salesResult.ok) {
     return send(res, 502, {
       ok: false,
       provider: 'daftra',
       period: { from: dateFrom, to: dateTo },
       sales_status: salesResult.status,
-      purchases_status: purchasesResult.status,
-      error: 'daftra_quarter_fetch_failed',
+      error: 'daftra_sales_fetch_failed',
     });
   }
 
-  const sales = salesResult.records.map(normalizeSalesRecord);
-  const purchases = purchasesResult.records.map(normalizePurchaseRecord);
-  const salesSummary = summarize(sales);
-  const purchaseSummary = summarize(purchases);
+  const sales = safeSummary(salesResult, ['Invoice', 'invoice']);
+  const purchases = safeSummary(purchasesResult, ['PurchaseInvoice', 'purchase_invoice', 'Invoice']);
+  const expenses = safeSummary(expensesResult, ['Expense', 'expense']);
+  const creditNotes = safeSummary(creditNotesResult, ['CreditNote', 'Invoice', 'credit_note']);
+  const purchaseRefunds = safeSummary(purchaseRefundsResult, ['PurchaseRefund', 'PurchaseInvoice', 'purchase_refund']);
+
+  // VAT logic: sales credit notes reduce output VAT. Purchase refunds reduce recoverable input VAT.
+  const outputTax = round2(sales.tax - creditNotes.tax);
+  const grossInputTax = round2(purchases.tax + expenses.tax);
+  const inputTax = round2(grossInputTax - purchaseRefunds.tax);
+  const netPayable = round2(outputTax - inputTax);
 
   return send(res, 200, {
     ok: true,
     provider: 'daftra',
     mode: 'read_only',
     period: { from: dateFrom, to: dateTo },
-    sales: salesSummary,
-    purchases: purchaseSummary,
+    sales,
+    purchases,
+    expenses,
+    adjustments: {
+      sales_credit_notes: creditNotes,
+      purchase_refunds: purchaseRefunds,
+    },
     vat: {
-      output_tax: salesSummary.tax,
-      input_tax: purchaseSummary.tax,
-      net_payable: round2(salesSummary.tax - purchaseSummary.tax),
+      gross_output_tax: sales.tax,
+      less_sales_credit_note_tax: creditNotes.tax,
+      output_tax: outputTax,
+      purchase_invoice_tax: purchases.tax,
+      expense_tax: expenses.tax,
+      gross_input_tax: grossInputTax,
+      less_purchase_refund_tax: purchaseRefunds.tax,
+      input_tax: inputTax,
+      net_payable: netPayable,
     },
-    diagnostics: {
-      sales_rows_received: sales.length,
-      purchase_rows_received: purchases.length,
-      sales_truncated: Boolean(salesResult.truncated),
-      purchases_truncated: Boolean(purchasesResult.truncated),
-    },
+    warning: 'Pre-filing review only. Confirm tax eligibility and document dates before submitting to ZATCA.',
     checked_at: new Date().toISOString(),
   });
 }
