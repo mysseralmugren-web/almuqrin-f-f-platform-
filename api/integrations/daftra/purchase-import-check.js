@@ -6,14 +6,16 @@ function rows(j){return Array.isArray(j?.data)?j.data:Array.isArray(j?.result?.d
 export default async function handler(req,res){
  if(req.method!=='GET')return send(res,405,{ok:false,error:'method_not_allowed'});
  if(!base()||!process.env.DAFTRA_API_KEY)return send(res,503,{ok:false,error:'not_configured'});
- const [sup,tax,inv1,inv2]=await Promise.all([
+ const [sup,tax,inv1,inv2,recent]=await Promise.all([
   get('/api2/suppliers.json?limit=100&page=1'),
   get('/api2/taxes.json?limit=100&page=1'),
   get('/api2/purchase_invoices.json?limit=20&page=1&keywords=3711'),
-  get('/api2/purchase_invoices.json?limit=20&page=1&keywords=S00130711')
+  get('/api2/purchase_invoices.json?limit=20&page=1&keywords=S00130711'),
+  get('/api2/purchase_invoices.json?limit=50&page=1')
  ]);
- const suppliers=rows(sup.json).map(x=>x.Supplier||x).filter(Boolean).map(x=>({id:x.id,business_name:x.business_name,first_name:x.first_name,last_name:x.last_name,notes:x.notes,bn1:x.bn1,bn2:x.bn2}));
+ const suppliers=rows(sup.json).map(x=>x.Supplier||x).filter(Boolean).map(x=>({id:x.id,business_name:x.business_name,notes:x.notes,bn1:x.bn1}));
  const taxes=rows(tax.json).map(x=>x.Tax||x).filter(Boolean).map(x=>({id:x.id,name:x.name,rate:x.rate,value:x.value,percentage:x.percentage}));
  const existing={tools_planet:rows(inv1.json).map(x=>x.PurchaseOrder||x),classic_palace:rows(inv2.json).map(x=>x.PurchaseOrder||x)};
- return send(res,200,{ok:true,suppliers,taxes,existing,statuses:{suppliers:sup.status,taxes:tax.status,tools:inv1.status,classic:inv2.status}});
+ const recentInvoices=rows(recent.json).map(x=>{const p=x.PurchaseOrder||x;return {id:p.id,no:p.no,date:p.date,draft:p.draft,supplier_id:p.supplier_id,supplier_business_name:p.supplier_business_name,summary_subtotal:p.summary_subtotal,summary_tax:p.summary_tax,summary_total:p.summary_total,total:p.total};});
+ return send(res,200,{ok:true,suppliers,taxes,existing,recent:recentInvoices,statuses:{suppliers:sup.status,taxes:tax.status,tools:inv1.status,classic:inv2.status,recent:recent.status}});
 }
