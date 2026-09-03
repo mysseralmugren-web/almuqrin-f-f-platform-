@@ -42,5 +42,8 @@ jobs:
       - name: Static security regressions
         run: bun run test:security:static
 
+      - name: SECURITY DEFINER governance
+        run: node scripts/security/security-definer-governance.mjs
+
       - name: Unit security regressions
         run: bun run test:security:unit
