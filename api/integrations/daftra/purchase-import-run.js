@@ -9,7 +9,7 @@ async function ensureSupplier(s){const f=await findSupplierByVat(s.vat);if(f.hit
 async function findInvoice(keyword){const r=await req('/api2/purchase_invoices.json?limit=50&page=1&keywords='+encodeURIComponent(keyword));return rows(r.json).map(x=>x.PurchaseOrder||x);}
 async function createDraftInvoice(d,supplierId){const body={PurchaseOrder:{supplier_id:Number(supplierId),currency_code:'SAR',date:d.date,no:d.no,draft:true},PurchaseOrderItem:[{item:d.item,description:d.description,unit_price:d.net,quantity:1,tax1:15}]};return req('/api2/purchase_invoices.json?send=draft',{method:'POST',body:JSON.stringify(body)});}
 export default async function handler(req0,res){
- if(req0.method!=='POST')return send(res,405,{ok:false,error:'method_not_allowed'});
+ if(req0.method!=='GET')return send(res,405,{ok:false,error:'method_not_allowed'});
  if(!base()||!process.env.DAFTRA_API_KEY)return send(res,503,{ok:false,error:'not_configured'});
  const docs=[
   {key:'tools_planet_3711',supplier:{name:'شركة كوكب عددنا للتجارة',vat:'314636325500003'},no:'3711',date:'2026-07-29',net:155.65,tax:23.35,total:179.00,item:'مواد وأدوات تصنيع - Tools Planet',description:'فاتورة المورد 3711 بتاريخ 2026-07-29؛ صافي 155.65؛ ضريبة 23.35؛ إجمالي 179.00.'},
