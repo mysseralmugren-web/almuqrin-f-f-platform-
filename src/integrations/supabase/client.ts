@@ -2,14 +2,27 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Canonical browser configuration for the approved AlMugren company_id project.
-// Both values are public browser credentials; authorization remains enforced by RLS.
+// Public browser configuration only. Authorization remains enforced by RLS.
 // Server/service credentials must never be added here.
-const APPROVED_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
-const APPROVED_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
+const PRODUCTION_SUPABASE_URL = 'https://vmswbmkkgvnjhznxbsdz.supabase.co';
+const PRODUCTION_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9Lxw_ydDT1Cun';
+const STAGING_SUPABASE_URL = 'https://selljopynsmecxqzgpra.supabase.co';
+const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_n0T9ibtda16AK6QDDV1uhA_g6u6abda';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
+}
+
+function isPreviewHostname(hostname: string): boolean {
+  const value = hostname.toLowerCase();
+  return value.endsWith('.vercel.app') && value.includes('-git-') && !value.includes('-git-main-');
+}
+
+function resolveBrowserSupabaseConfig() {
+  const preview = typeof window !== 'undefined' && isPreviewHostname(window.location.hostname);
+  return preview
+    ? { url: STAGING_SUPABASE_URL, key: STAGING_SUPABASE_PUBLISHABLE_KEY }
+    : { url: PRODUCTION_SUPABASE_URL, key: PRODUCTION_SUPABASE_PUBLISHABLE_KEY };
 }
 
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
@@ -22,7 +35,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
-    // New Supabase API keys are opaque strings, not bearer JWTs.
     if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
       headers.delete('Authorization');
     }
@@ -33,11 +45,10 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseClient() {
-  // This installation is intentionally pinned to the approved company_id Supabase project.
-  // Avoid accepting stale/mismatched deployment variables for public browser configuration.
-  return createClient<Database>(APPROVED_SUPABASE_URL, APPROVED_SUPABASE_PUBLISHABLE_KEY, {
+  const config = resolveBrowserSupabaseConfig();
+  return createClient<Database>(config.url, config.key, {
     global: {
-      fetch: createSupabaseFetch(APPROVED_SUPABASE_PUBLISHABLE_KEY),
+      fetch: createSupabaseFetch(config.key),
     },
     auth: {
       storage: typeof window !== 'undefined' ? localStorage : undefined,
@@ -49,8 +60,6 @@ function createSupabaseClient() {
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
     if (!_supabase) _supabase = createSupabaseClient();
