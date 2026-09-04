@@ -12,6 +12,7 @@ const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_n0T9ibtda16AK6QDDV1uhA_
 const PRODUCTION_HOSTNAMES = new Set([
   'almuqrinfurniturefactory.com',
   'www.almuqrinfurniturefactory.com',
+  'platform.almuqrinfurniturefactory.com',
   'almuqrin-ff-platform.vercel.app',
   'almuqrin-ff-platform-git-main-almuqrinfactory.vercel.app',
 ]);
