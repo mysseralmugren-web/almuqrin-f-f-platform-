@@ -14,7 +14,7 @@ import {
   Avatar,
   AvatarFallback,
 } from "@/components/ui/avatar";
-import { Bell, Search, Moon, Sun, Globe, LogOut, User as UserIcon, Settings as SettingsIcon } from "lucide-react";
+import { Bell, Search, Moon, Sun, Globe, LogOut, User as UserIcon, Settings as SettingsIcon, Fingerprint } from "lucide-react";
 import { useTheme, useT } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "@tanstack/react-router";
@@ -126,6 +126,10 @@ export function AppHeader() {
             <DropdownMenuItem>
               <UserIcon className="me-2 h-4 w-4" />
               {t("الملف الشخصي", "Profile")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate({ to: "/passkeys" })}>
+              <Fingerprint className="me-2 h-4 w-4" />
+              {t("البصمة وFace ID", "Face ID & Passkeys")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => navigate({ to: "/settings" })}>
               <SettingsIcon className="me-2 h-4 w-4" />
