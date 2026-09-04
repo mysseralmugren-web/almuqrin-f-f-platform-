@@ -66,6 +66,11 @@ function normalizeRecord(row, wrappers) {
     tax,
     draft: pick(doc, ['draft']),
     type: pick(doc, ['type', 'document_type']),
+    description: pick(doc, ['description', 'notes', 'note', 'title', 'name']),
+    vendor: pick(doc, ['supplier_business_name', 'vendor_name', 'payee', 'beneficiary', 'supplier_name']),
+    category: pick(doc, ['category_name', 'expense_category', 'category']),
+    payment_method: pick(doc, ['payment_method', 'payment_type', 'method']),
+    reference: pick(doc, ['reference', 'ref_no', 'reference_no']),
   };
 }
 
@@ -75,10 +80,7 @@ async function fetchJson(url, apiKey) {
   try {
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: 'application/json',
-        APIKEY: apiKey,
-      },
+      headers: { accept: 'application/json', APIKEY: apiKey },
       signal: controller.signal,
     });
     const text = await response.text();
@@ -125,18 +127,15 @@ function summarize(records) {
   const total = usable.reduce((sum, r) => sum + r.total, 0);
   let tax = usable.reduce((sum, r) => sum + r.tax, 0);
   if (!tax && total >= subtotal) tax = total - subtotal;
-  return {
-    count: usable.length,
-    subtotal: round2(subtotal),
-    tax: round2(tax),
-    total: round2(total),
-  };
+  return { count: usable.length, subtotal: round2(subtotal), tax: round2(tax), total: round2(total) };
 }
 
-function safeSummary(result, wrappers) {
+function safeSummary(result, wrappers, includeRows = false) {
   if (!result?.ok) return { available: false, status: result?.status ?? null, count: 0, subtotal: 0, tax: 0, total: 0 };
   const rows = result.records.map((row) => normalizeRecord(row, wrappers));
-  return { available: true, status: result.status, ...summarize(rows), rows_received: rows.length, truncated: Boolean(result.truncated) };
+  const summary = { available: true, status: result.status, ...summarize(rows), rows_received: rows.length, truncated: Boolean(result.truncated) };
+  if (includeRows) summary.rows = rows.filter((r) => String(r.draft ?? '0') !== '1');
+  return summary;
 }
 
 export default async function handler(req, res) {
@@ -147,9 +146,7 @@ export default async function handler(req, res) {
 
   const baseUrl = normalizeBaseUrl(process.env.DAFTRA_BASE_URL);
   const apiKey = process.env.DAFTRA_API_KEY;
-  if (!baseUrl || !apiKey) {
-    return send(res, 503, { ok: false, error: 'daftra_not_configured' });
-  }
+  if (!baseUrl || !apiKey) return send(res, 503, { ok: false, error: 'daftra_not_configured' });
 
   const dateFrom = String(req.query?.from || '2026-04-01');
   const dateTo = String(req.query?.to || '2026-06-30');
@@ -166,22 +163,15 @@ export default async function handler(req, res) {
   ]);
 
   if (!salesResult.ok) {
-    return send(res, 502, {
-      ok: false,
-      provider: 'daftra',
-      period: { from: dateFrom, to: dateTo },
-      sales_status: salesResult.status,
-      error: 'daftra_sales_fetch_failed',
-    });
+    return send(res, 502, { ok: false, provider: 'daftra', period: { from: dateFrom, to: dateTo }, sales_status: salesResult.status, error: 'daftra_sales_fetch_failed' });
   }
 
   const sales = safeSummary(salesResult, ['Invoice', 'invoice']);
-  const purchases = safeSummary(purchasesResult, ['PurchaseInvoice', 'purchase_invoice', 'Invoice']);
-  const expenses = safeSummary(expensesResult, ['Expense', 'expense']);
+  const purchases = safeSummary(purchasesResult, ['PurchaseInvoice', 'purchase_invoice', 'Invoice'], true);
+  const expenses = safeSummary(expensesResult, ['Expense', 'expense'], true);
   const creditNotes = safeSummary(creditNotesResult, ['CreditNote', 'Invoice', 'credit_note']);
   const purchaseRefunds = safeSummary(purchaseRefundsResult, ['PurchaseRefund', 'PurchaseInvoice', 'purchase_refund']);
 
-  // VAT logic: sales credit notes reduce output VAT. Purchase refunds reduce recoverable input VAT.
   const outputTax = round2(sales.tax - creditNotes.tax);
   const grossInputTax = round2(purchases.tax + expenses.tax);
   const inputTax = round2(grossInputTax - purchaseRefunds.tax);
@@ -195,10 +185,7 @@ export default async function handler(req, res) {
     sales,
     purchases,
     expenses,
-    adjustments: {
-      sales_credit_notes: creditNotes,
-      purchase_refunds: purchaseRefunds,
-    },
+    adjustments: { sales_credit_notes: creditNotes, purchase_refunds: purchaseRefunds },
     vat: {
       gross_output_tax: sales.tax,
       less_sales_credit_note_tax: creditNotes.tax,
