@@ -57,6 +57,13 @@ function normalizeRecord(row, wrappers) {
   ]));
   if (!tax && total >= subtotal && total > 0) tax = total - subtotal;
 
+  const paid = toNumber(pick(doc, [
+    'paid', 'paid_amount', 'total_paid', 'payment_total', 'payments_total', 'amount_paid'
+  ]));
+  const due = toNumber(pick(doc, [
+    'due', 'due_amount', 'remaining', 'remaining_amount', 'balance_due', 'unpaid_amount'
+  ]));
+
   return {
     id: pick(doc, ['id']),
     no: pick(doc, ['no', 'invoice_no', 'code', 'number']),
@@ -64,9 +71,14 @@ function normalizeRecord(row, wrappers) {
     subtotal,
     total,
     tax,
+    paid,
+    due,
     draft: pick(doc, ['draft']),
     type: pick(doc, ['type', 'document_type']),
+    status: pick(doc, ['status', 'invoice_status', 'payment_status', 'state']),
+    delivery_status: pick(doc, ['delivery_status', 'shipping_status', 'fulfillment_status', 'order_status']),
     description: pick(doc, ['description', 'notes', 'note', 'title', 'name']),
+    client: pick(doc, ['client_business_name', 'client_name', 'customer_name', 'business_name']),
     vendor: pick(doc, ['supplier_business_name', 'vendor_name', 'payee', 'beneficiary', 'supplier_name']),
     category: pick(doc, ['category_name', 'expense_category', 'category']),
     payment_method: pick(doc, ['payment_method', 'payment_type', 'method']),
@@ -166,7 +178,7 @@ export default async function handler(req, res) {
     return send(res, 502, { ok: false, provider: 'daftra', period: { from: dateFrom, to: dateTo }, sales_status: salesResult.status, error: 'daftra_sales_fetch_failed' });
   }
 
-  const sales = safeSummary(salesResult, ['Invoice', 'invoice']);
+  const sales = safeSummary(salesResult, ['Invoice', 'invoice'], true);
   const purchases = safeSummary(purchasesResult, ['PurchaseInvoice', 'purchase_invoice', 'Invoice'], true);
   const expenses = safeSummary(expensesResult, ['Expense', 'expense'], true);
   const creditNotes = safeSummary(creditNotesResult, ['CreditNote', 'Invoice', 'credit_note']);
@@ -197,7 +209,7 @@ export default async function handler(req, res) {
       input_tax: inputTax,
       net_payable: netPayable,
     },
-    warning: 'Pre-filing review only. Confirm tax eligibility and document dates before submitting to ZATCA.',
+    warning: 'Pre-filing review only. Confirm tax eligibility, invoice type, payment timing, and supply dates before submitting to ZATCA.',
     checked_at: new Date().toISOString(),
   });
 }
