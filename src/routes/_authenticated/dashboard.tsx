@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { useT } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  ArrowUpRight,
   Factory,
   Package,
   ShoppingCart,
@@ -14,9 +13,7 @@ import {
   Users,
   Activity,
   Sparkles,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -29,46 +26,191 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
+type Metrics = {
+  activeProductionOrders: number;
+  inventoryValue: number;
+  monthSales: number;
+  pendingPurchaseOrders: number;
+  activeCustomers: number;
+  qualityRate: number | null;
+  activeSkus: number;
+};
+
+const ZERO_METRICS: Metrics = {
+  activeProductionOrders: 0,
+  inventoryValue: 0,
+  monthSales: 0,
+  pendingPurchaseOrders: 0,
+  activeCustomers: 0,
+  qualityRate: null,
+  activeSkus: 0,
+};
+
+function money(value: number, lang: "ar" | "en") {
+  return new Intl.NumberFormat(lang === "ar" ? "ar-SA" : "en-SA", {
+    style: "currency",
+    currency: "SAR",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 function DashboardPage() {
   const t = useT();
   const { user } = useAuth();
+  const [metrics, setMetrics] = useState<Metrics>(ZERO_METRICS);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const lang: "ar" | "en" = document.documentElement.lang === "en" ? "en" : "ar";
 
-  const stats = [
-    { ar: "طلبات الإنتاج النشطة", en: "Active Production Orders", value: "128", delta: "+12%", icon: Factory, tone: "primary" },
-    { ar: "قيمة المخزون", en: "Inventory Value", value: "SAR 4.8M", delta: "+3.4%", icon: Package, tone: "accent" },
-    { ar: "المبيعات هذا الشهر", en: "Sales this Month", value: "SAR 1.92M", delta: "+8.1%", icon: TrendingUp, tone: "success" },
-    { ar: "أوامر شراء معلقة", en: "Pending POs", value: "17", delta: "-4", icon: ShoppingCart, tone: "warning" },
-  ];
+  useEffect(() => {
+    let cancelled = false;
 
-  const lines = [
-    { ar: "خط تصنيع الأبواب A1", en: "Doors Line A1", pct: 82 },
-    { ar: "خط تجميع الخزائن B2", en: "Cabinets Line B2", pct: 64 },
-    { ar: "خط التشطيبات C3", en: "Finishing Line C3", pct: 47 },
-    { ar: "خط التنجيد D1", en: "Upholstery Line D1", pct: 91 },
-  ];
+    async function loadMetrics() {
+      setLoading(true);
+      setError(null);
 
-  const activity = [
-    { ar: "تم إنشاء طلب إنتاج جديد PO-2041", en: "New production order PO-2041 created", icon: CheckCircle2, tone: "text-success" },
-    { ar: "بانتظار موافقة المشتريات PR-338", en: "Purchase request PR-338 pending approval", icon: Clock, tone: "text-warning" },
-    { ar: "تنبيه: انخفاض مخزون خشب الزان", en: "Alert: beech wood stock low", icon: AlertTriangle, tone: "text-destructive" },
-    { ar: "اكتمل توريد الطلبية SO-1902", en: "Sales order SO-1902 delivered", icon: CheckCircle2, tone: "text-success" },
-  ];
+      try {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString().slice(0, 10);
+
+        const [
+          productionRes,
+          purchaseRes,
+          customersRes,
+          skusRes,
+          salesRes,
+          qcRes,
+          balancesRes,
+          itemsRes,
+        ] = await Promise.all([
+          supabase
+            .from("production_orders")
+            .select("id", { count: "exact", head: true })
+            .in("status", ["planned", "in_progress", "qc", "on_hold"]),
+          supabase
+            .from("purchase_orders")
+            .select("id", { count: "exact", head: true })
+            .in("status", ["draft", "approved", "partially_received"]),
+          supabase
+            .from("customers")
+            .select("id", { count: "exact", head: true })
+            .eq("is_active", true),
+          supabase
+            .from("items")
+            .select("id", { count: "exact", head: true })
+            .eq("is_active", true),
+          supabase
+            .from("sales_orders")
+            .select("total")
+            .gte("order_date", monthStart)
+            .lt("order_date", nextMonth)
+            .neq("status", "cancelled"),
+          supabase.from("quality_inspections").select("result"),
+          supabase.from("stock_balances").select("item_id,quantity"),
+          supabase.from("items").select("id,standard_cost"),
+        ]);
+
+        const firstError = [
+          productionRes,
+          purchaseRes,
+          customersRes,
+          skusRes,
+          salesRes,
+          qcRes,
+          balancesRes,
+          itemsRes,
+        ].find((r) => r.error)?.error;
+        if (firstError) throw firstError;
+
+        const monthSales = (salesRes.data ?? []).reduce(
+          (sum, row) => sum + Number(row.total ?? 0),
+          0,
+        );
+
+        const costs = new Map(
+          (itemsRes.data ?? []).map((row) => [row.id, Number(row.standard_cost ?? 0)]),
+        );
+        const inventoryValue = (balancesRes.data ?? []).reduce(
+          (sum, row) => sum + Number(row.quantity ?? 0) * (costs.get(row.item_id) ?? 0),
+          0,
+        );
+
+        const inspections = qcRes.data ?? [];
+        const passed = inspections.filter((row) => row.result === "pass").length;
+        const qualityRate = inspections.length ? (passed / inspections.length) * 100 : null;
+
+        if (!cancelled) {
+          setMetrics({
+            activeProductionOrders: productionRes.count ?? 0,
+            inventoryValue,
+            monthSales,
+            pendingPurchaseOrders: purchaseRes.count ?? 0,
+            activeCustomers: customersRes.count ?? 0,
+            qualityRate,
+            activeSkus: skusRes.count ?? 0,
+          });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setMetrics(ZERO_METRICS);
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadMetrics();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stats = useMemo(
+    () => [
+      {
+        ar: "طلبات الإنتاج النشطة",
+        en: "Active Production Orders",
+        value: String(metrics.activeProductionOrders),
+        icon: Factory,
+      },
+      {
+        ar: "قيمة المخزون",
+        en: "Inventory Value",
+        value: money(metrics.inventoryValue, lang),
+        icon: Package,
+      },
+      {
+        ar: "المبيعات هذا الشهر",
+        en: "Sales this Month",
+        value: money(metrics.monthSales, lang),
+        icon: TrendingUp,
+      },
+      {
+        ar: "أوامر شراء معلقة",
+        en: "Pending Purchase Orders",
+        value: String(metrics.pendingPurchaseOrders),
+        icon: ShoppingCart,
+      },
+    ],
+    [lang, metrics],
+  );
 
   return (
     <div className="space-y-6">
-      {/* Welcome */}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {t("لوحة التحكم التنفيذية", "Executive Dashboard")}
           </div>
           <h1 className="mt-1 truncate text-2xl font-bold sm:text-3xl">
-            {t(`مرحباً، ${user?.nameAr}`, `Welcome, ${user?.name}`)}
+            {t(`مرحباً، ${user?.nameAr ?? ""}`, `Welcome, ${user?.name ?? ""}`)}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {t(
-              "نظرة عامة على أداء المصنع والعمليات اليوم.",
-              "A snapshot of factory performance and operations today.",
+              "هذه الأرقام مرتبطة مباشرة ببيانات التشغيل الفعلية في المنصة.",
+              "These metrics are linked directly to live operational data.",
             )}
           </p>
         </div>
@@ -78,29 +220,26 @@ function DashboardPage() {
         </Button>
       </div>
 
-      {/* KPI cards */}
+      {error && (
+        <Card className="border-destructive/40">
+          <CardContent className="p-4 text-sm text-destructive">
+            {t("تعذر تحميل مؤشرات التشغيل الحية. تم عرض الصفر بدل بيانات تجريبية.", "Live metrics could not be loaded. Zero values are shown instead of demo data.")}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <Card key={s.en} className="shadow-card transition hover:shadow-elegant">
+            <Card key={s.en} className="shadow-card">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      s.delta.startsWith("-")
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-success/10 text-success"
-                    }
-                  >
-                    {s.delta}
-                  </Badge>
+                <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
                 </div>
-                <div className="mt-4 text-2xl font-bold tracking-tight">{s.value}</div>
+                <div className="mt-4 text-2xl font-bold tracking-tight">
+                  {loading ? "—" : s.value}
+                </div>
                 <div className="mt-1 text-xs text-muted-foreground">{t(s.ar, s.en)}</div>
               </CardContent>
             </Card>
@@ -108,63 +247,42 @@ function DashboardPage() {
         })}
       </div>
 
-      {/* Main grid */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="shadow-card lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-base">
-                {t("أداء خطوط الإنتاج", "Production Lines Utilization")}
-              </CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("متوسط الاستخدام خلال آخر 24 ساعة", "Average utilization · last 24h")}
-              </p>
-            </div>
-            <Button variant="ghost" size="sm" className="gap-1 text-xs">
-              {t("عرض التفاصيل", "View details")}
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Button>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Factory className="h-4 w-4 text-primary" />
+              {t("أداء الإنتاج", "Production Performance")}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
-            {lines.map((l) => (
-              <div key={l.en} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{t(l.ar, l.en)}</span>
-                  <span className="text-muted-foreground">{l.pct}%</span>
-                </div>
-                <Progress value={l.pct} className="h-2" />
-              </div>
-            ))}
+          <CardContent>
+            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+              {t(
+                "لا توجد بيانات إنتاج فعلية بعد. سيظهر الأداء تلقائياً عند بدء أوامر التصنيع.",
+                "No live production data yet. Performance will appear automatically once manufacturing orders start.",
+              )}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="h-4 w-4 text-accent-foreground" />
+              <Activity className="h-4 w-4 text-primary" />
               {t("النشاط الأخير", "Recent Activity")}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {activity.map((a, i) => {
-              const Icon = a.icon;
-              return (
-                <div key={i} className="flex items-start gap-3">
-                  <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${a.tone}`} />
-                  <div className="min-w-0 text-sm">
-                    <div className="leading-tight">{t(a.ar, a.en)}</div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      {t("قبل قليل", "Just now")}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <CardContent>
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+              {t(
+                "لا توجد حركات تشغيل فعلية بعد.",
+                "No live operational activity yet.",
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick stats row */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="shadow-card">
           <CardContent className="flex items-center gap-4 p-5">
@@ -172,36 +290,34 @@ function DashboardPage() {
               <Users className="h-5 w-5 text-accent-foreground" />
             </div>
             <div>
-              <div className="text-lg font-bold">312</div>
-              <div className="text-xs text-muted-foreground">
-                {t("العملاء النشطون", "Active customers")}
-              </div>
+              <div className="text-lg font-bold">{loading ? "—" : metrics.activeCustomers}</div>
+              <div className="text-xs text-muted-foreground">{t("العملاء النشطون", "Active customers")}</div>
             </div>
           </CardContent>
         </Card>
+
         <Card className="shadow-card">
           <CardContent className="flex items-center gap-4 p-5">
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-accent-soft">
-              <Factory className="h-5 w-5 text-accent-foreground" />
+              <ShieldCheck className="h-5 w-5 text-accent-foreground" />
             </div>
             <div>
-              <div className="text-lg font-bold">98.4%</div>
-              <div className="text-xs text-muted-foreground">
-                {t("جودة الإنتاج", "Production quality")}
+              <div className="text-lg font-bold">
+                {loading ? "—" : metrics.qualityRate == null ? "—" : `${metrics.qualityRate.toFixed(1)}%`}
               </div>
+              <div className="text-xs text-muted-foreground">{t("جودة الإنتاج", "Production quality")}</div>
             </div>
           </CardContent>
         </Card>
+
         <Card className="shadow-card">
           <CardContent className="flex items-center gap-4 p-5">
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-accent-soft">
               <Package className="h-5 w-5 text-accent-foreground" />
             </div>
             <div>
-              <div className="text-lg font-bold">1,284</div>
-              <div className="text-xs text-muted-foreground">
-                {t("أصناف نشطة في المخزون", "Active SKUs in inventory")}
-              </div>
+              <div className="text-lg font-bold">{loading ? "—" : metrics.activeSkus}</div>
+              <div className="text-xs text-muted-foreground">{t("أصناف نشطة في المخزون", "Active SKUs in inventory")}</div>
             </div>
           </CardContent>
         </Card>
