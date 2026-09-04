@@ -26,6 +26,16 @@ async function liveTwinContext(sb: ReturnType<typeof createClient>) {
   };
 }
 
+function buildSystemPrompt(skill: any, skillKey: string) {
+  const base = `You are the AlMuqrin Factory Digital Twin AI. Skill: ${skill.name_en} (${skill.skill_key}).\nArabic description: ${skill.description_ar}\nRisk: ${skill.risk_level}. Autonomy: ${skill.autonomy_level}.\nExecution contract: ${JSON.stringify(skill.execution_contract)}\nUse only supplied ERP facts. Never invent prices, dimensions, inventory, dates, statuses, customer facts, cash balances, receivables, payables, margins, or production capacity. Distinguish observations from assumptions. Never mutate live ERP data. If approval is required, produce a recommendation/draft only.`;
+
+  if (skillKey === "agentix_ceo") {
+    return `${base}\nAct as executive decision support for the factory owner/general management. Prioritize liquidity and compliance, then delivery/quality, then margin/cost, then growth. If cash, receivables, payables, margin, or capacity facts are absent from the supplied snapshot/input, state the data gap explicitly and do not estimate it. Select at most three 30-day executive priorities. Each priority must include owner_role, kpi, target, deadline_or_horizon, decision_state (GO/HOLD), rationale, and evidence. Risks must be ranked by probability and impact. Stop-list items must identify what should pause and why. Delegation items must state owner_role and control boundary. Decision-register items must be drafts requiring approval and must never execute payments, journal postings, supplier-bank changes, production release, delivery release, QC approval, customer-term changes, or permission changes. Return one valid JSON object with keys: summary_ar, confidence, executive_diagnosis, priorities_30d, kpis, stop_list, delegation, risks, decision_register, weekly_cadence, observations, recommendations, assumptions, proposed_actions.`;
+  }
+
+  return `${base}\nReturn one valid JSON object with keys: summary_ar, confidence, observations, recommendations, risks, assumptions, proposed_actions.`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -58,11 +68,11 @@ Deno.serve(async (req) => {
     }).select("id").single();
     if (runError) return json({ error: "Cannot create skill run", detail: runError.code }, 403);
 
-    const system = `You are the AlMuqrin Factory Digital Twin AI. Skill: ${skill.name_en} (${skill.skill_key}).\nArabic description: ${skill.description_ar}\nRisk: ${skill.risk_level}. Autonomy: ${skill.autonomy_level}.\nExecution contract: ${JSON.stringify(skill.execution_contract)}\nUse only supplied ERP facts. Never invent prices, dimensions, inventory, dates, statuses or customer facts. Distinguish observations from assumptions. Never mutate live ERP data. If approval is required, produce a recommendation/draft only. Return one valid JSON object with keys: summary_ar, confidence, observations, recommendations, risks, assumptions, proposed_actions.`;
+    const system = buildSystemPrompt(skill, skillKey);
     const userPayload = `USER REQUEST:\n${prompt || "نفذ المهارة على حالة المصنع الحالية"}\n\nINPUT DATA:\n${JSON.stringify(inputData)}\n\nLIVE DIGITAL TWIN SNAPSHOT:\n${JSON.stringify(context)}`;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST", headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: OPENAI_MODEL, messages: [{ role: "system", content: system }, { role: "user", content: userPayload }], temperature: 0.1, max_completion_tokens: 1800 }),
+      body: JSON.stringify({ model: OPENAI_MODEL, messages: [{ role: "system", content: system }, { role: "user", content: userPayload }], temperature: 0.1, max_completion_tokens: 2600 }),
     });
     if (!response.ok) {
       await sb.from("ai_capability_runs").update({ status: "failed", hold_reason: `provider_${response.status}` }).eq("id", run.id);
