@@ -57,13 +57,6 @@ function normalizeRecord(row, wrappers) {
   ]));
   if (!tax && total >= subtotal && total > 0) tax = total - subtotal;
 
-  const paid = toNumber(pick(doc, [
-    'paid', 'paid_amount', 'total_paid', 'payment_total', 'payments_total', 'amount_paid'
-  ]));
-  const due = toNumber(pick(doc, [
-    'due', 'due_amount', 'remaining', 'remaining_amount', 'balance_due', 'unpaid_amount'
-  ]));
-
   return {
     id: pick(doc, ['id']),
     no: pick(doc, ['no', 'invoice_no', 'code', 'number']),
@@ -71,12 +64,10 @@ function normalizeRecord(row, wrappers) {
     subtotal,
     total,
     tax,
-    paid,
-    due,
     draft: pick(doc, ['draft']),
     type: pick(doc, ['type', 'document_type']),
     status: pick(doc, ['status', 'invoice_status', 'payment_status', 'state']),
-    delivery_status: pick(doc, ['delivery_status', 'shipping_status', 'fulfillment_status', 'order_status']),
+    delivery_status: pick(doc, ['delivery_status', 'shipping_status', 'fulfillment_status', 'requisition_delivery_status', 'order_status']),
     description: pick(doc, ['description', 'notes', 'note', 'title', 'name']),
     client: pick(doc, ['client_business_name', 'client_name', 'customer_name', 'business_name']),
     vendor: pick(doc, ['supplier_business_name', 'vendor_name', 'payee', 'beneficiary', 'supplier_name']),
@@ -133,6 +124,55 @@ async function fetchLegacyList(baseUrl, apiKey, resource, dateFrom, dateTo) {
   return { ok: true, status: 200, records: all, truncated: true };
 }
 
+function paymentRows(json) {
+  const d = json?.data || json || {};
+  const candidates = [
+    d.InvoicePayment,
+    d.InvoicePayments,
+    d.invoice_payments,
+    d.payments,
+    d.Invoice?.InvoicePayment,
+    d.Invoice?.InvoicePayments,
+    d.Invoice?.invoice_payments,
+    d.Invoice?.payments,
+  ];
+  for (const value of candidates) if (Array.isArray(value)) return value;
+  return [];
+}
+
+function normalizePayment(row) {
+  const p = row?.InvoicePayment || row || {};
+  return {
+    id: pick(p, ['id']),
+    date: pick(p, ['date', 'created']),
+    amount: round2(toNumber(pick(p, ['amount', 'payment_amount', 'total']))),
+    status: pick(p, ['status']),
+    payment_method: pick(p, ['payment_method', 'method']),
+    transaction_id: pick(p, ['transaction_id', 'reference', 'ref_no']),
+  };
+}
+
+async function enrichSalesRows(baseUrl, apiKey, rows, dateFrom, dateTo) {
+  return Promise.all(rows.map(async (row) => {
+    if (!row.id) return row;
+    const detail = await fetchJson(`${baseUrl}/api2/invoices/${encodeURIComponent(row.id)}.json`, apiKey);
+    if (!detail.ok) return { ...row, detail_status: detail.status, payments: [], paid_total: 0, paid_in_period: 0, paid_after_period: 0, calculated_balance: row.total };
+    const payments = paymentRows(detail.json).map(normalizePayment).filter((p) => p.amount > 0);
+    const paidTotal = round2(payments.reduce((s, p) => s + p.amount, 0));
+    const paidInPeriod = round2(payments.filter((p) => String(p.date || '').slice(0, 10) >= dateFrom && String(p.date || '').slice(0, 10) <= dateTo).reduce((s, p) => s + p.amount, 0));
+    const paidAfterPeriod = round2(payments.filter((p) => String(p.date || '').slice(0, 10) > dateTo).reduce((s, p) => s + p.amount, 0));
+    return {
+      ...row,
+      detail_status: detail.status,
+      payments,
+      paid_total: paidTotal,
+      paid_in_period: paidInPeriod,
+      paid_after_period: paidAfterPeriod,
+      calculated_balance: round2(Math.max(0, row.total - paidTotal)),
+    };
+  }));
+}
+
 function summarize(records) {
   const usable = records.filter((r) => String(r.draft ?? '0') !== '1');
   const subtotal = usable.reduce((sum, r) => sum + r.subtotal, 0);
@@ -179,6 +219,14 @@ export default async function handler(req, res) {
   }
 
   const sales = safeSummary(salesResult, ['Invoice', 'invoice'], true);
+  sales.rows = await enrichSalesRows(baseUrl, apiKey, sales.rows || [], dateFrom, dateTo);
+  sales.payment_reconciliation = {
+    paid_in_period: round2(sales.rows.reduce((s, r) => s + toNumber(r.paid_in_period), 0)),
+    paid_after_period: round2(sales.rows.reduce((s, r) => s + toNumber(r.paid_after_period), 0)),
+    paid_total: round2(sales.rows.reduce((s, r) => s + toNumber(r.paid_total), 0)),
+    calculated_balance: round2(sales.rows.reduce((s, r) => s + toNumber(r.calculated_balance), 0)),
+  };
+
   const purchases = safeSummary(purchasesResult, ['PurchaseInvoice', 'purchase_invoice', 'Invoice'], true);
   const expenses = safeSummary(expensesResult, ['Expense', 'expense'], true);
   const creditNotes = safeSummary(creditNotesResult, ['CreditNote', 'Invoice', 'credit_note']);
@@ -209,7 +257,7 @@ export default async function handler(req, res) {
       input_tax: inputTax,
       net_payable: netPayable,
     },
-    warning: 'Pre-filing review only. Confirm tax eligibility, invoice type, payment timing, and supply dates before submitting to ZATCA.',
+    warning: 'Pre-filing review only. Payment timing alone does not determine VAT due when a tax invoice has already been issued; confirm supply and document dates before submitting to ZATCA.',
     checked_at: new Date().toISOString(),
   });
 }
