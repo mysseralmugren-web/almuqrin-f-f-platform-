@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { LayoutTemplate, Copy, CheckCircle2, Save } from "lucide-react";
+import { LayoutTemplate, Copy, CheckCircle2, Save, Palette, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,11 @@ import {
   cloneTemplateVersion, ensureDefaultTemplates, listTemplates, publishTemplateVersion, saveTemplateVersion,
 } from "@/lib/documents.functions";
 import { DOC_KIND_LABEL, DOC_KIND_PREFIX, type DocKind } from "@/lib/documents-constants";
+import {
+  DOCUMENT_BRAND_POLICY,
+  DOCUMENT_DESIGN_VARIANTS,
+  UNIFIED_DOCUMENT_MODELS,
+} from "@/lib/document-design-system";
 import { useAr, useDocFail } from "@/components/app/documents-ui";
 import { useT } from "@/lib/theme";
 
@@ -66,6 +71,72 @@ function TemplatesPage() {
 
   return (
     <div className="space-y-6">
+      <Card className="shadow-card border-primary/20">
+        <CardHeader className="space-y-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Palette className="h-4 w-4 text-primary" />
+            {t("نظام التصميم الموحد لمستندات مصنع المقرن", "Unified AlMugren document design system")}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t(
+              "تم اعتماد ثلاثة تصاميم موحدة لكل النماذج التشغيلية والمالية ومستندات العميل. جميعها تستخدم نفس الشعار والخطوط والترويسة والتذييل وQR والعلامة المائية.",
+              "Three unified designs are available for financial, operational and client-facing documents, sharing the same brand system, header, footer, QR and watermark.",
+            )}
+          </p>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-3">
+          {DOCUMENT_DESIGN_VARIANTS.map((variant) => (
+            <div key={variant.id} className="rounded-2xl border bg-background p-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <strong className="text-sm">{ar ? variant.ar : variant.en}</strong>
+                <Badge variant="outline">{variant.id}</Badge>
+              </div>
+              <p className="text-xs leading-6 text-muted-foreground">{variant.descriptionAr}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <LayoutTemplate className="h-4 w-4 text-primary" />
+            {t("النماذج المشمولة", "Covered document models")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {UNIFIED_DOCUMENT_MODELS.map((model) => {
+            const variant = DOCUMENT_DESIGN_VARIANTS.find((v) => v.id === model.defaultVariant)!;
+            return (
+              <div key={model.key} className="rounded-xl border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{model.ar}</span>
+                  <Badge>{variant.ar}</Badge>
+                </div>
+                <div className="mt-2 text-[11px] text-muted-foreground" dir="ltr">{model.key}</div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card border-emerald-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            {t("سياسة الهوية والحماية", "Brand protection policy")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
+          <div>• {t("العلامة المائية إلزامية في المستندات المولدة.", "Watermark is mandatory on generated documents.")}</div>
+          <div>• {t("تغيير العلامة المائية والهوية للمالك فقط.", "Only the factory owner may change watermark/branding.")}</div>
+          <div>• {t("الإصدار المنشور يبقى مقفلاً.", "Published template versions remain locked.")}</div>
+          <div>• {t("أي تعديل بعد الاعتماد ينتج Revision جديدًا.", "Post-approval changes require a new revision.")}</div>
+          <div dir="ltr">Primary: {DOCUMENT_BRAND_POLICY.primaryColor}</div>
+          <div dir="ltr">Secondary: {DOCUMENT_BRAND_POLICY.secondaryColor}</div>
+        </CardContent>
+      </Card>
+
       <Card className="shadow-card">
         <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle className="flex items-center gap-2 text-base">
