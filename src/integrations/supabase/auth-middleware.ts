@@ -13,9 +13,17 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
 
+function isProductionHostname(hostname: string): boolean {
+  const value = hostname.toLowerCase();
+  return value === 'almuqrinfurniturefactory.com'
+    || value === 'www.almuqrinfurniturefactory.com'
+    || value === 'almuqrin-ff-platform.vercel.app'
+    || value === 'almuqrin-ff-platform-git-main-almuqrinfactory.vercel.app';
+}
+
 function isPreviewHostname(hostname: string): boolean {
   const value = hostname.toLowerCase();
-  return value.endsWith('.vercel.app') && value.includes('-git-') && !value.includes('-git-main-');
+  return value.endsWith('.vercel.app') && !isProductionHostname(value);
 }
 
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
@@ -51,9 +59,11 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
   if (error || !data?.claims?.sub) throw new Error('Unauthorized: Invalid token');
   const userId = data.claims.sub;
   const { data: profile, error: profileError } = await supabase.from('profiles').select('company_id, is_active').eq('id', userId).maybeSingle();
-  if (profileError || !profile?.is_active || !profile.company_id) throw new Error('Unauthorized: Account is disabled or unassigned');
+  if (profileError) throw new Error(`Unauthorized: Profile lookup failed (${profileError.code || 'unknown'})`);
+  if (!profile?.is_active || !profile.company_id) throw new Error('Unauthorized: Account is disabled or unassigned');
   const { data: effectiveRole, error: roleError } = await supabase.from('user_roles').select('id').eq('user_id', userId).eq('company_id', profile.company_id).limit(1).maybeSingle();
-  if (roleError || !effectiveRole) throw new Error('Unauthorized: No active company role');
+  if (roleError) throw new Error(`Unauthorized: Role lookup failed (${roleError.code || 'unknown'})`);
+  if (!effectiveRole) throw new Error('Unauthorized: No active company role');
 
   return next({ context: { supabase, userId, claims: data.claims } });
 });

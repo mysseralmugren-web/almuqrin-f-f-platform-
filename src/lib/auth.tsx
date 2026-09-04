@@ -72,10 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       return;
     }
-    const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    const [{ data: profile, error: profileError }, { data: roleRows, error: rolesError }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", s.user.id).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", s.user.id),
     ]);
+    if (profileError || rolesError) {
+      console.error("Failed to load authenticated profile", {
+        profileCode: profileError?.code,
+        rolesCode: rolesError?.code,
+      });
+      setUser(null);
+      return;
+    }
     if (!profile?.is_active) {
       setUser(null);
       setSession(null);
@@ -129,7 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("is_active")
       .eq("id", data.user.id)
       .maybeSingle();
-    if (profileError || !profile?.is_active) {
+    if (profileError) {
+      await supabase.auth.signOut({ scope: "local" });
+      throw new Error(`PROFILE_LOOKUP_FAILED:${profileError.code || "unknown"}:${profileError.message}`);
+    }
+    if (!profile?.is_active) {
       await supabase.auth.signOut({ scope: "local" });
       throw new Error("ACCOUNT_DISABLED");
     }

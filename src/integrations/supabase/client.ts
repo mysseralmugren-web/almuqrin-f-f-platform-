@@ -9,13 +9,21 @@ const PRODUCTION_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_vn2uBc-OOKQaXAGE3Q9L
 const STAGING_SUPABASE_URL = 'https://selljopynsmecxqzgpra.supabase.co';
 const STAGING_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_n0T9ibtda16AK6QDDV1uhA_g6u6abda';
 
+const PRODUCTION_HOSTNAMES = new Set([
+  'almuqrinfurniturefactory.com',
+  'www.almuqrinfurniturefactory.com',
+  'almuqrin-ff-platform.vercel.app',
+  'almuqrin-ff-platform-git-main-almuqrinfactory.vercel.app',
+]);
+
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
 
 function isPreviewHostname(hostname: string): boolean {
   const value = hostname.toLowerCase();
-  return value.endsWith('.vercel.app') && value.includes('-git-') && !value.includes('-git-main-');
+  if (PRODUCTION_HOSTNAMES.has(value)) return false;
+  return value.endsWith('.vercel.app');
 }
 
 function resolveBrowserSupabaseConfig() {
