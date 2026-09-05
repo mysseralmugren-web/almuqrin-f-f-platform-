@@ -213,3 +213,17 @@
 @keyframes store-float-reverse { 50% { transform: rotateY(15deg) rotateZ(-4deg) translateY(.7rem); } }
 @media (max-width: 640px) { .store-atelier__cabinet { transform: scale(.85) rotateX(-7deg) rotateY(-26deg); } .store-atelier__frame { left: 5%; } }
 @media (prefers-reduced-motion: reduce) { .store-atelier__cabinet, .store-atelier__frame { animation: none; } .store-product-card:hover { transform: none; } }
+
+/* Storefront wayfinding: one clear path from discovery to custom request. */
+.storefront-shell { scroll-behavior: smooth; }
+.store-nav { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid rgb(255 255 255 / .1); background: rgb(12 23 32 / .92); color: #fff; backdrop-filter: blur(18px); }
+.store-nav__inner { display: flex; min-height: 4.7rem; max-width: 80rem; align-items: center; gap: 1.6rem; margin: 0 auto; padding: 0 1.5rem; }
+.store-nav__brand { display: grid; flex: 0 0 auto; color: #fff; font-family: var(--font-display); font-weight: 900; font-size: 1.15rem; line-height: 1; text-decoration: none; }
+.store-nav__brand small { margin-top: .28rem; color: rgb(255 255 255 / .56); font-family: var(--font-sans); font-size: .58rem; font-weight: 700; letter-spacing: .05em; }
+.store-nav__links { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: center; gap: .3rem; overflow-x: auto; white-space: nowrap; }
+.store-nav__links a { border-radius: 999px; padding: .56rem .76rem; color: rgb(255 255 255 / .74); font-size: .78rem; font-weight: 700; text-decoration: none; transition: background-color .2s ease, color .2s ease; }
+.store-nav__links a:hover, .store-nav__links a:focus-visible { background: rgb(255 255 255 / .1); color: #fff; outline: none; }
+.store-nav__cta { flex: 0 0 auto; border-radius: 999px; background: #d8b36b; padding: .65rem .95rem; color: #17212a; font-size: .78rem; font-weight: 900; text-decoration: none; transition: transform .2s ease, background-color .2s ease; }
+.store-nav__cta:hover { transform: translateY(-1px); background: #f1d292; }
+.storefront-shell section { scroll-margin-top: 5.2rem; }
+@media (max-width: 720px) { .store-nav__inner { min-height: 4.35rem; gap: .7rem; padding: 0 .9rem; } .store-nav__brand { font-size: 1rem; } .store-nav__links { justify-content: flex-start; gap: 0; } .store-nav__links a { padding: .55rem .58rem; font-size: .7rem; } .store-nav__cta { display: none; } }
