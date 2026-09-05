@@ -9,6 +9,8 @@ const website = read("src/routes/api/public/website.submit.ts");
 const whatsapp = read("src/routes/api/public/whatsapp.webhook.ts");
 const ai = read("src/lib/ai.functions.ts");
 const constants = read("src/lib/documents-constants.ts");
+const serverClient = read("src/integrations/supabase/client.server.ts");
+const vercel = read("vercel.json");
 
 let passed = 0;
 function contains(name, source, pattern) {
@@ -27,6 +29,9 @@ contains("bootstrap takes an atomic database claim", setup, /platform_bootstrap_
 excludes("bootstrap no longer authorizes a public contact email", setup, /BOOTSTRAP_ADMIN_EMAIL|gmail\.com/i);
 contains("server middleware rejects inactive profiles", authMiddleware, /!profile\?\.is_active/);
 contains("server middleware requires a tenant-aligned role", authMiddleware, /\.eq\('company_id', profile\.company_id\)/);
+contains("custom platform domain is production, never preview", authMiddleware, /platform\.almuqrinfurniturefactory\.com/);
+contains("server client pins production to the approved Supabase project", serverClient, /candidate !== PRODUCTION_SUPABASE_URL/);
+contains("deployment sends baseline browser security headers", vercel, /X-Content-Type-Options[\s\S]*X-Frame-Options[\s\S]*Referrer-Policy[\s\S]*Permissions-Policy/);
 
 contains("current tenant helper requires an active profile", migration, /current_company_id\(\)[\s\S]*p\.is_active = true/);
 contains("self-reactivation is blocked", migration, /SELF_ACTIVATION_CHANGE_FORBIDDEN/);

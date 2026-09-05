@@ -10,12 +10,13 @@ function resolveSupabaseUrl(value: string | undefined): string {
   const fallback = process.env['VERCEL_ENV'] === 'preview' ? STAGING_SUPABASE_URL : PRODUCTION_SUPABASE_URL;
   if (process.env['VERCEL_ENV'] === 'preview') return STAGING_SUPABASE_URL;
 
-  const candidate = value?.trim().replace(/^(['"])(.*)\1$/, '$2') || fallback;
-  try {
-    const url = new URL(candidate);
-    if ((url.protocol === 'https:' || url.protocol === 'http:') && url.hostname.endsWith('.supabase.co')) return url.origin;
-  } catch {}
-  console.warn('[Supabase] Invalid SUPABASE_URL; using the approved environment URL.');
+  // Production credentials must never be sent to an arbitrary Supabase project.
+  // The deployment verifier accepts only this URL, and the runtime enforces the
+  // same invariant in case an environment variable is altered after deployment.
+  const candidate = value?.trim().replace(/^(['"])(.*)\1$/, '$2');
+  if (candidate && candidate !== PRODUCTION_SUPABASE_URL) {
+    console.warn('[Supabase] Unapproved SUPABASE_URL ignored; using the production project.');
+  }
   return fallback;
 }
 
