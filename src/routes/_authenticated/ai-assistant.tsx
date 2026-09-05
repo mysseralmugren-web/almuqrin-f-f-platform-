@@ -1,14 +1,35 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Sparkles, Inbox, Palette, Armchair, BarChart3, Settings2, ReceiptText, Landmark, BrainCircuit, ScanSearch, Cloud } from "lucide-react";
+import {
+  Sparkles,
+  Inbox,
+  Palette,
+  Armchair,
+  BarChart3,
+  Settings2,
+  ReceiptText,
+  Landmark,
+  BrainCircuit,
+  ScanSearch,
+  Cloud,
+  Box,
+} from "lucide-react";
 import { useT } from "@/lib/theme";
 
 export const Route = createFileRoute("/_authenticated/ai-assistant")({
   head: () => ({
     meta: [
       { title: "الموظف الذكي · AlMugren AI Factory OS" },
-      { name: "description", content: "AI employee: document, image, cost analysis and room-to-production digital twin workflows with human review controls." },
+      {
+        name: "description",
+        content:
+          "AI employee: document, image, cost analysis and room-to-production digital twin workflows with human review controls.",
+      },
       { property: "og:title", content: "الموظف الذكي · AlMugren AI Factory OS" },
-      { property: "og:description", content: "AI employee and room-to-production digital twin with controlled skills and human approval." },
+      {
+        property: "og:description",
+        content:
+          "AI employee and room-to-production digital twin with controlled skills and human approval.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -22,15 +43,70 @@ function AiLayout() {
 
   const tabs = [
     { to: "/ai-assistant", ar: "صندوق المهام", en: "Task inbox", icon: Inbox, exact: true },
-    { to: "/ai-assistant/interior-twin", ar: "التوأم الرقمي للتصميم", en: "Interior digital twin", icon: ScanSearch, exact: false },
+    {
+      to: "/ai-assistant/interior-twin",
+      ar: "التوأم الرقمي للتصميم",
+      en: "Interior digital twin",
+      icon: ScanSearch,
+      exact: false,
+    },
     { to: "/ai-assistant/cloud", ar: "Cloud AI", en: "Cloud AI", icon: Cloud, exact: false },
-    { to: "/ai-assistant/skills", ar: "مهارات التوأم الرقمي", en: "Digital twin skills", icon: BrainCircuit, exact: false },
-    { to: "/ai-assistant/invoice", ar: "فاتورة مورد ذكية", en: "Smart supplier invoice", icon: ReceiptText, exact: false },
-    { to: "/ai-assistant/finance", ar: "Finance AI", en: "Finance AI", icon: Landmark, exact: false },
-    { to: "/ai-assistant/design", ar: "تصميم ديزاين", en: "Design skill", icon: Palette, exact: false },
-    { to: "/ai-assistant/seating", ar: "سعة الجلسات", en: "Seating capacity", icon: Armchair, exact: false },
-    { to: "/ai-assistant/usage", ar: "التقارير والاستخدام", en: "Reports & usage", icon: BarChart3, exact: false },
-    { to: "/ai-assistant/settings", ar: "الإعدادات", en: "Settings", icon: Settings2, exact: false },
+    {
+      to: "/ai-assistant/skills",
+      ar: "مهارات التوأم الرقمي",
+      en: "Digital twin skills",
+      icon: BrainCircuit,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/invoice",
+      ar: "فاتورة مورد ذكية",
+      en: "Smart supplier invoice",
+      icon: ReceiptText,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/finance",
+      ar: "Finance AI",
+      en: "Finance AI",
+      icon: Landmark,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/design",
+      ar: "تصميم ديزاين",
+      en: "Design skill",
+      icon: Palette,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/render",
+      ar: "الرندر ثلاثي الأبعاد",
+      en: "3D render",
+      icon: Box,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/seating",
+      ar: "سعة الجلسات",
+      en: "Seating capacity",
+      icon: Armchair,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/usage",
+      ar: "التقارير والاستخدام",
+      en: "Reports & usage",
+      icon: BarChart3,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/settings",
+      ar: "الإعدادات",
+      en: "Settings",
+      icon: Settings2,
+      exact: false,
+    },
   ] as const;
 
   return (
@@ -43,9 +119,14 @@ function AiLayout() {
           <div className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             {t("الوحدة 09", "Module 09")}
           </div>
-          <h1 className="mt-0.5 truncate text-2xl font-bold sm:text-3xl">{t("الموظف الذكي", "AI employee")}</h1>
+          <h1 className="mt-0.5 truncate text-2xl font-bold sm:text-3xl">
+            {t("الموظف الذكي", "AI employee")}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            {t("تحليل المستندات والصور والتكاليف ومحاكاة التوأم الرقمي — مع اعتماد بشري للقرارات الحساسة", "Document, image and cost analysis plus digital-twin simulation — with human approval for sensitive decisions")}
+            {t(
+              "تحليل المستندات والصور والتكاليف ومحاكاة التوأم الرقمي — مع اعتماد بشري للقرارات الحساسة",
+              "Document, image and cost analysis plus digital-twin simulation — with human approval for sensitive decisions",
+            )}
           </p>
         </div>
       </div>
