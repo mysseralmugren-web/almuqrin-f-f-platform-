@@ -17,6 +17,7 @@ function isProductionHostname(hostname: string): boolean {
   const value = hostname.toLowerCase();
   return value === 'almuqrinfurniturefactory.com'
     || value === 'www.almuqrinfurniturefactory.com'
+    || value === 'platform.almuqrinfurniturefactory.com'
     || value === 'almuqrin-ff-platform.vercel.app'
     || value === 'almuqrin-ff-platform-git-main-almuqrinfactory.vercel.app';
 }
