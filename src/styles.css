@@ -184,3 +184,26 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Public storefront: an architectural 3D showroom, distinct from the app shell. */
+.storefront-shell { background: #f6f3ec; }
+.store-hero { background: radial-gradient(circle at 74% 42%, #405b76 0, #1d3449 29%, #101e2a 68%, #0c1720 100%); }
+.store-hero__grain { opacity: .22; background-image: linear-gradient(115deg, transparent 0 48%, rgb(255 255 255 / .12) 49%, transparent 50%), radial-gradient(circle at 23% 84%, rgb(216 179 107 / .34), transparent 23%); }
+.store-hero__floating-note { position: absolute; bottom: 2.2rem; left: 1rem; align-items: center; gap: .7rem; border: 1px solid rgb(255 255 255 / .16); border-radius: 1rem; background: rgb(9 20 31 / .72); padding: .8rem 1rem; font-size: .7rem; line-height: 1.55; backdrop-filter: blur(14px); }
+.store-atelier { position: absolute; inset: 0; display: grid; place-items: center; perspective: 1100px; overflow: hidden; }
+.store-atelier__halo { position: absolute; width: 23rem; aspect-ratio: 1; border-radius: 999px; background: radial-gradient(circle, rgb(231 195 125 / .48), transparent 68%); filter: blur(4px); transform: translate(2rem, -2rem); }
+.store-atelier__floor { position: absolute; bottom: 2rem; width: min(36rem, 88%); height: 9rem; border-radius: 50%; background: radial-gradient(ellipse, rgb(0 0 0 / .62), transparent 68%); transform: rotateX(72deg); }
+.store-atelier__cabinet { position: absolute; width: min(15rem, 48%); height: 18rem; transform-style: preserve-3d; transform: rotateX(-7deg) rotateY(-26deg) rotateZ(1deg); animation: store-float 8s ease-in-out infinite; }
+.store-atelier__cabinet-face { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border: 1px solid rgb(216 179 107 / .5); border-radius: .18rem; background: linear-gradient(115deg, #766451, #3d3028 42%, #806d59); box-shadow: inset 0 0 0 7px rgb(16 30 42 / .3), 1.1rem 1.6rem 3.5rem rgb(0 0 0 / .42); transform: translateZ(2.8rem); }
+.store-atelier__line { border-left: 1px solid rgb(255 255 255 / .2); }
+.store-atelier__cabinet-side { position: absolute; top: 0; right: 0; width: 2.8rem; height: 100%; background: linear-gradient(90deg, #171f25, #4e433a); transform: rotateY(90deg) translateZ(13.6rem); transform-origin: right; }
+.store-atelier__cabinet-top { position: absolute; top: 0; right: 0; width: 100%; height: 2.8rem; background: linear-gradient(135deg, #b79b75, #64503d); transform: rotateX(90deg) translateZ(1.4rem); transform-origin: top; }
+.store-atelier__handle { position: absolute; top: 46%; width: .17rem; height: 2.2rem; border-radius: 999px; background: linear-gradient(#f6deb0, #a77335); box-shadow: .2rem .25rem .4rem rgb(0 0 0 / .25); }
+.store-atelier__handle--one { right: 47%; }.store-atelier__handle--two { right: 52%; }
+.store-atelier__frame { position: absolute; top: 9%; left: 10%; width: min(13rem, 37%); aspect-ratio: .9; overflow: hidden; border: .45rem solid #d8b36b; background: #eee4d0; box-shadow: .9rem 1.4rem 2.8rem rgb(0 0 0 / .32); transform: rotateY(17deg) rotateZ(-4deg) translateZ(1rem); animation: store-float-reverse 10s ease-in-out infinite; }
+.store-atelier__frame img { width: 100%; height: 100%; object-fit: cover; }.store-atelier__frame-gradient { width: 100%; height: 100%; background: linear-gradient(145deg, #a07250, #e4d4b6 48%, #31576f); }
+.store-atelier__tag { position: absolute; right: 9%; top: 14%; transform: rotate(-90deg); color: rgb(255 255 255 / .55); font: 700 .58rem/1 Inter, sans-serif; letter-spacing: .25em; }
+.store-product-card { transform: translateZ(0); transform-style: preserve-3d; }.store-product-card:hover { transform: perspective(900px) rotateX(3deg) rotateY(-3deg) translateY(-.45rem); box-shadow: 1.2rem 1.7rem 2.8rem rgb(22 33 42 / .16); }
+@keyframes store-float { 50% { transform: rotateX(-5deg) rotateY(-22deg) rotateZ(1deg) translateY(-.8rem); } }
+@keyframes store-float-reverse { 50% { transform: rotateY(15deg) rotateZ(-4deg) translateY(.7rem); } }
+@media (max-width: 640px) { .store-atelier__cabinet { transform: scale(.85) rotateX(-7deg) rotateY(-26deg); } .store-atelier__frame { left: 5%; } }
+@media (prefers-reduced-motion: reduce) { .store-atelier__cabinet, .store-atelier__frame { animation: none; } .store-product-card:hover { transform: none; } }
