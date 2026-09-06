@@ -24,20 +24,6 @@ async function hash(file:File){const h=await crypto.subtle.digest("SHA-256",awai
 async function compress(file:File){if(!file.type.startsWith("image/")||file.size<1200000||file.type==="image/webp")return file;const b=await createImageBitmap(file),r=Math.min(1,2200/Math.max(b.width,b.height)),c=document.createElement("canvas");c.width=Math.round(b.width*r);c.height=Math.round(b.height*r);c.getContext("2d")!.drawImage(b,0,0,c.width,c.height);b.close();const blob=await new Promise<Blob>((ok,no)=>c.toBlob(x=>x?ok(x):no(new Error("IMAGE_COMPRESSION_FAILED")),"image/webp",.84));return blob.size<file.size?new File([blob],file.name.replace(/\.[^.]+$/,".webp"),{type:"image/webp"}):file}
 
 const encodeMetadata=(value:string)=>btoa(unescape(encodeURIComponent(value)));
-async function uploadDirect(signedUrl:string,file:File,onProgress:(progress:number)=>void){
- const signed=new URL(signedUrl);
- signed.hostname=signed.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co");
- await new Promise<void>((resolve,reject)=>{
-  const request=new XMLHttpRequest();
-  request.open("PUT",signed.toString());
-  request.setRequestHeader("x-upsert","false");
-  if(file.type)request.setRequestHeader("content-type",file.type);
-  request.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(80,45+Math.round(event.loaded/event.total*35)))};
-  request.onerror=()=>reject(new Error("DIRECT_UPLOAD_NETWORK_FAILED"));
-  request.onload=()=>request.status>=200&&request.status<300?resolve():reject(new Error(`DIRECT_UPLOAD_FAILED: ${request.status} ${request.responseText}`));
-  request.send(file);
- });
-}
 const wait=(ms:number)=>new Promise(resolve=>window.setTimeout(resolve,ms));
 async function withRetry(run:()=>Promise<void>,onRetry:(attempt:number)=>void,maxAttempts=3){
  let last:unknown;
@@ -99,7 +85,7 @@ function FilesCenter(){
     const s=await signed({data:{entity:"file_center",entity_id:crypto.randomUUID(),file_name:f.name,content_type:f.type||null,size_bytes:f.size}});
     patch(item.id,{status:"uploading",progress:20,stage:t("يُرفع الآن…","Uploading now…")});
     if(f.size>DEFAULT_ATTACHMENT_MAX_BYTES){
-     try{await withRetry(()=>uploadDirect(s.signed_url,f,progress=>patch(item.id,{progress})),attempt=>patch(item.id,{stage:t(`إعادة المحاولة ${attempt}/2…`,`Retrying ${attempt}/2…`)}))}
+     try{await withRetry(()=>uploadSigned(s.signed_url,f,progress=>patch(item.id,{progress})),attempt=>patch(item.id,{stage:t(`إعادة المحاولة ${attempt}/2…`,`Retrying ${attempt}/2…`)}))}
      catch{await withRetry(()=>uploadResumable(s.path,s.token,s.signed_url,f,progress=>patch(item.id,{progress})),attempt=>patch(item.id,{stage:t(`استئناف الرفع ${attempt}/2…`,`Resuming upload ${attempt}/2…`)}))}
     }else{
      try{await withRetry(()=>uploadSigned(s.signed_url,f,progress=>patch(item.id,{progress})),attempt=>patch(item.id,{stage:t(`إعادة المحاولة ${attempt}/2…`,`Retrying ${attempt}/2…`)}))}
