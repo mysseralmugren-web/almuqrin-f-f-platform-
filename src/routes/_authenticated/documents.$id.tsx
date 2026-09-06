@@ -127,14 +127,9 @@ function DocumentViewer() {
       </div>
 
       <div className="relative overflow-hidden rounded-xl border bg-card p-8 text-sm shadow-card print:border-0 print:shadow-none" dir="rtl">
-        {brand.watermark_enabled && brand.watermark_text && (
-          <div
-            className="pointer-events-none absolute inset-0 grid place-items-center"
-            style={{ opacity: brand.watermark_opacity ?? 0.07 }}
-          >
-            <span className="rotate-[-30deg] text-5xl font-black" style={{ color: brand.primary }}>
-              {brand.watermark_text}
-            </span>
+        {brand.watermark_enabled && (
+          <div className="pointer-events-none absolute inset-0 grid place-items-center" style={{ opacity: brand.watermark_opacity ?? 0.07 }}>
+            <img src="/brand/almugren-furniture-logo.jpeg" alt="" className="h-40 w-40 rotate-[-22deg] object-contain" />
           </div>
         )}
 
