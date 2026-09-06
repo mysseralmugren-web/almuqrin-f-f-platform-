@@ -22,6 +22,7 @@ import {
   Plug,
   Palette,
   ScanSearch,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "./auth";
@@ -47,6 +48,7 @@ export const MODULES: ModuleDef[] = [
   { key: "purchasing", path: "/purchasing", labelAr: "المشتريات", labelEn: "Purchasing", icon: ShoppingCart, group: "commercial" },
   { key: "sales", path: "/sales", labelAr: "المبيعات", labelEn: "Sales", icon: TrendingUp, group: "commercial" },
   { key: "quotations", path: "/quotations", labelAr: "عروض الأسعار", labelEn: "Quotations", icon: FileText, group: "commercial" },
+  { key: "marketing", path: "/marketing", labelAr: "مسؤول الإعلانات", labelEn: "Advertising Manager", icon: Megaphone, group: "commercial" },
   { key: "catalog-ingestion", path: "/catalog-ingestion", labelAr: "استخراج المتجر من PDF", labelEn: "PDF Catalog Ingestion", icon: ScanSearch, group: "commercial" },
   { key: "store-admin", path: "/store-admin", labelAr: "اعتماد المتجر", labelEn: "Store Approvals", icon: ShoppingCart, group: "commercial" },
   { key: "invoices", path: "/invoices", labelAr: "الفواتير الضريبية", labelEn: "Tax Invoices", icon: FileText, group: "finance" },
