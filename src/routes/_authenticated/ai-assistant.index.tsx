@@ -265,7 +265,7 @@ function AiInbox() {
                 ))}
               </TableBody>
             </Table>
-          ) : null}
+          )}
         </CardContent>
       </Card>
     </div>
