@@ -6,6 +6,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { useT } from "@/lib/theme";
 import { toast } from "sonner";
 
+function passkeyErrorMessage(message: string, t: ReturnType<typeof useT>) {
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes("passkey") ||
+    normalized.includes("credential") ||
+    normalized.includes("notallowederror") ||
+    normalized.includes("aborterror")
+  ) {
+    return t(
+      "تعذر التحقق بالبصمة. تأكد من اختيار مفتاح مرور «Apple Passwords» ثم حاول مرة أخرى.",
+      "Passkey verification could not be completed. Select your passkey and try again.",
+    );
+  }
+  return message;
+}
+
 export function PasskeyLoginButton() {
   const t = useT();
   const navigate = useNavigate();
@@ -22,15 +38,22 @@ export function PasskeyLoginButton() {
     try {
       const { error } = await supabase.auth.signInWithPasskey();
       if (error) throw error;
+
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) throw sessionError;
+      if (!session) {
+        throw new Error(t("لم يكتمل تسجيل الدخول بالبصمة. حاول مرة أخرى.", "Passkey sign-in did not complete. Please try again."));
+      }
+
       toast.success(t("تم تسجيل الدخول بالبصمة بنجاح", "Signed in with passkey"));
-      navigate({ to: "/dashboard" });
+      await navigate({ to: "/dashboard" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      toast.error(
-        message.toLowerCase().includes("passkey")
-          ? t("لا يوجد مفتاح مرور مسجل لهذا الجهاز أو تعذر التحقق.", "No passkey is registered for this device, or verification failed.")
-          : message,
-      );
+      toast.error(passkeyErrorMessage(message, t));
     } finally {
       setLoading(false);
     }
@@ -43,6 +66,7 @@ export function PasskeyLoginButton() {
       className="h-11 w-full gap-2"
       onClick={signIn}
       disabled={loading || !supported}
+      aria-busy={loading}
     >
       <Fingerprint className="h-5 w-5" />
       {loading
