@@ -2,12 +2,12 @@
 -- Reads remain governed by existing RLS. This trigger protects writes even if
 -- a client attempts to bypass the UI and call Supabase directly.
 
--- security-definer: reviewed
 create or replace function public.enforce_watermark_owner_only()
+-- security-definer: reviewed
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path to public
 as $$
 declare
   v_uid uuid := auth.uid();
@@ -53,6 +53,7 @@ end;
 $$;
 
 revoke all on function public.enforce_watermark_owner_only() from public;
+-- security-definer-authenticated-rpc: intentional
 grant execute on function public.enforce_watermark_owner_only() to authenticated;
 
 do $$
