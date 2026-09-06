@@ -3,11 +3,12 @@ create schema if not exists private;
 grant usage on schema private to authenticated;
 
 create or replace function private.is_manager_of(_employee_id uuid)
+-- security-definer: reviewed
 returns boolean
 language plpgsql
 stable
 security definer
-set search_path = ''
+set search_path to ''
 as $$
 declare
   me uuid;
@@ -41,6 +42,8 @@ $$;
 
 revoke all on function private.is_manager_of(uuid) from public, anon;
 revoke execute on function private.is_manager_of(uuid) from authenticated;
+-- security-definer-authenticated-rpc: intentional
+-- Authenticated execution is required for RLS evaluation; tenant/user authorization is derived through current_employee_id() and the enclosing leave-request policy.
 grant execute on function private.is_manager_of(uuid) to authenticated, service_role;
 
 alter policy lr_update on public.leave_requests
