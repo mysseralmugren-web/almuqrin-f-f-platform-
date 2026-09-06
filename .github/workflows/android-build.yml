@@ -49,8 +49,8 @@ jobs:
       - name: Prepare branded Android assets
         run: |
           mkdir -p assets
-          magick public/brand/almugren-furniture-logo.jpeg -resize 720x720 -gravity center -background '#ECEEF1' -extent 1024x1024 assets/icon.png
-          magick public/brand/almugren-furniture-logo.jpeg -resize 900x900 -gravity center -background '#ECEEF1' -extent 1440x2560 assets/splash.png
+          convert public/brand/almugren-furniture-logo.jpeg -resize 720x720 -gravity center -background '#ECEEF1' -extent 1024x1024 assets/icon.png
+          convert public/brand/almugren-furniture-logo.jpeg -resize 900x900 -gravity center -background '#ECEEF1' -extent 1440x2560 assets/splash.png
 
       - name: Generate Android project
         run: |
