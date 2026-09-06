@@ -1,3 +1,5 @@
+import https from 'node:https';
+
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
   'cache-control': 'no-store',
@@ -77,22 +79,30 @@ function normalizeRecord(row, wrappers) {
   };
 }
 
-async function fetchJson(url, apiKey) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
-  try {
-    const response = await fetch(url, {
+function fetchJson(url, apiKey) {
+  const target = url instanceof URL ? url : new URL(url);
+
+  return new Promise((resolve) => {
+    const request = https.request(target, {
       method: 'GET',
       headers: { accept: 'application/json', APIKEY: apiKey },
-      signal: controller.signal,
+      timeout: 12000,
+    }, (response) => {
+      let text = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { text += chunk; });
+      response.on('end', () => {
+        let json = null;
+        try { json = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+        const status = response.statusCode || 0;
+        resolve({ ok: status >= 200 && status < 300, status, json });
+      });
     });
-    const text = await response.text();
-    let json = null;
-    try { json = text ? JSON.parse(text) : null; } catch { /* ignore */ }
-    return { ok: response.ok, status: response.status, json };
-  } finally {
-    clearTimeout(timeout);
-  }
+
+    request.on('timeout', () => request.destroy(new Error('daftra_request_timeout')));
+    request.on('error', () => resolve({ ok: false, status: 0, json: null }));
+    request.end();
+  });
 }
 
 async function fetchLegacyList(baseUrl, apiKey, resource, dateFrom, dateTo) {
@@ -106,7 +116,7 @@ async function fetchLegacyList(baseUrl, apiKey, resource, dateFrom, dateTo) {
     url.searchParams.set('date_to', dateTo);
     url.searchParams.set('recursive', '1');
 
-    const result = await fetchJson(url.toString(), apiKey);
+    const result = await fetchJson(url, apiKey);
     if (!result.ok) return { ...result, records: all };
 
     const body = result.json || {};
@@ -155,7 +165,8 @@ function normalizePayment(row) {
 async function enrichSalesRows(baseUrl, apiKey, rows, dateFrom, dateTo) {
   return Promise.all(rows.map(async (row) => {
     if (!row.id) return row;
-    const detail = await fetchJson(`${baseUrl}/api2/invoices/${encodeURIComponent(row.id)}.json`, apiKey);
+    const detailUrl = new URL(`/api2/invoices/${encodeURIComponent(row.id)}.json`, `${baseUrl}/`);
+    const detail = await fetchJson(detailUrl, apiKey);
     if (!detail.ok) return { ...row, detail_status: detail.status, payments: [], paid_total: 0, paid_in_period: 0, paid_after_period: 0, calculated_balance: row.total };
     const payments = paymentRows(detail.json).map(normalizePayment).filter((p) => p.amount > 0);
     const paidTotal = round2(payments.reduce((s, p) => s + p.amount, 0));
