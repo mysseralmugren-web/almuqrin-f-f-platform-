@@ -41,7 +41,10 @@ async function uploadDirect(signedUrl:string,file:File,onProgress:(progress:numb
 async function uploadSigned(signedUrl:string,file:File,onProgress:(progress:number)=>void){
  await new Promise<void>((resolve,reject)=>{
   const request=new XMLHttpRequest();
-  request.open("PUT",signedUrl);
+  const direct=new URL(signedUrl);
+  direct.hostname=direct.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co");
+  request.open("PUT",direct.toString());
+  request.setRequestHeader("x-upsert","false");
   if(file.type)request.setRequestHeader("content-type",file.type);
   request.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(80,45+Math.round(event.loaded/event.total*35)))};
   request.onerror=()=>reject(new Error("SIGNED_UPLOAD_NETWORK_FAILED"));
