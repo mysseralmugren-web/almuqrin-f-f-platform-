@@ -161,7 +161,11 @@ Deno.serve(async (req) => {
     }
     if (action === "health") {
       if (!WORKER_URL || !WORKER_KEY || !CALLBACK_SECRET)
-        return json({ connected: false, configured: false }, 503);
+        return json({
+          connected: false,
+          configured: false,
+          reason: "Render worker settings are incomplete",
+        });
       safeWorkerUrl();
       return json({
         connected: true,
