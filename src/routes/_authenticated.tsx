@@ -26,7 +26,7 @@ function Shell() {
   const isPrint=location.pathname.startsWith("/print/");
   const isGeneratedDocument=/^\/documents\/[0-9a-f-]{36}$/i.test(location.pathname);
   if(isPrint) return <main className="min-h-screen bg-white p-4 text-slate-950 print:p-0"><PermissionBoundary><Outlet/></PermissionBoundary><PlatformWatermark/><PrintVerificationQr pathname={location.pathname}/></main>;
-  return <SidebarProvider><div className="flex min-h-screen w-full bg-surface"><AppSidebar/><SidebarInset className="flex min-w-0 flex-1 flex-col"><AppHeader/><main className="flex-1 p-4 sm:p-6 lg:p-8"><PermissionBoundary><Outlet/></PermissionBoundary></main></SidebarInset><PlatformWatermark/>{isGeneratedDocument&&<PrintVerificationQr pathname={location.pathname}/>}</div></SidebarProvider>;
+  return <SidebarProvider><div className="factory-app-shell flex min-h-screen w-full"><AppSidebar/><SidebarInset className="flex min-w-0 flex-1 flex-col"><AppHeader/><main className="factory-app-main flex-1 p-4 sm:p-6 lg:p-8"><PermissionBoundary><Outlet/></PermissionBoundary></main></SidebarInset><PlatformWatermark/>{isGeneratedDocument&&<PrintVerificationQr pathname={location.pathname}/>}</div></SidebarProvider>;
 }
 
 function AuthenticatedLayout() {
