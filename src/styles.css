@@ -227,3 +227,11 @@
 .store-nav__cta:hover { transform: translateY(-1px); background: #f1d292; }
 .storefront-shell section { scroll-margin-top: 5.2rem; }
 @media (max-width: 720px) { .store-nav__inner { min-height: 4.35rem; gap: .7rem; padding: 0 .9rem; } .store-nav__brand { font-size: 1rem; } .store-nav__links { justify-content: flex-start; gap: 0; } .store-nav__links a { padding: .55rem .58rem; font-size: .7rem; } .store-nav__cta { display: none; } }
+
+/* Product imagery: a tactile showroom response on pointer devices, quiet on touch. */
+.store-product-card { overflow: hidden; transform-style: preserve-3d; will-change: transform; }
+.store-product-card > div:first-child::after { position: absolute; inset: 0; content: ""; pointer-events: none; background: linear-gradient(118deg, transparent 24%, rgb(255 255 255 / .34) 46%, transparent 61%); opacity: 0; transform: translateX(-120%) skewX(-18deg); transition: transform .65s cubic-bezier(.2,.7,.2,1), opacity .2s ease; }
+.store-product-card img { transform: scale(1.001); transition: transform .65s cubic-bezier(.16,1,.3,1), filter .45s ease; }
+@media (hover: hover) and (pointer: fine) { .store-product-card:hover { transform: perspective(1000px) rotateX(2.5deg) rotateY(-2.5deg) translateY(-.55rem); box-shadow: 1.3rem 1.8rem 3rem rgb(22 33 42 / .18); } .store-product-card:hover img { filter: saturate(1.08) contrast(1.03); transform: scale(1.075); } .store-product-card:hover > div:first-child::after { opacity: .85; transform: translateX(120%) skewX(-18deg); } }
+.store-product-card:focus-visible { outline: 3px solid #d8b36b; outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { .store-product-card, .store-product-card img, .store-product-card > div:first-child::after { transition: none; } .store-product-card:hover { transform: none; } }
