@@ -13,7 +13,16 @@ async function companyOf(c: Ctx): Promise<string> {
   return data.company_id as string;
 }
 
-const safeName = (n: string) => n.replace(/[^\w.\-\u0600-\u06FF]/g, "_").slice(-80);
+const safeName = (n: string) => {
+  const ext = n.toLowerCase().match(/\.([a-z0-9]{1,10})$/)?.[0] ?? "";
+  const rawStem = ext ? n.slice(0, -ext.length) : n;
+  const stem = rawStem
+    .normalize("NFKD")
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/^[_\-.]+|[_\-.]+$/g, "")
+    .slice(-48);
+  return `${stem || "file"}${ext}`;
+};
 
 /** Returns a short-lived signed upload URL scoped under the caller's company folder. */
 export const createAttachmentUploadUrl = createServerFn({ method: "POST" })
