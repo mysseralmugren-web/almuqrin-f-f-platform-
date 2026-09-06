@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Fingerprint, KeyRound, Trash2 } from "lucide-react";
+import { Fingerprint, KeyRound, LogIn, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,10 +27,12 @@ type PasskeyItem = {
 
 function PasskeysPage() {
   const t = useT();
+  const navigate = useNavigate();
   const [items, setItems] = useState<PasskeyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const supported = typeof window !== "undefined" && "PublicKeyCredential" in window;
+  const hasRegisteredPasskey = items.length > 0;
 
   async function refresh() {
     setLoading(true);
@@ -54,6 +56,17 @@ function PasskeysPage() {
       toast.error(t("هذا الجهاز أو المتصفح لا يدعم Passkeys.", "This device or browser does not support passkeys."));
       return;
     }
+
+    if (hasRegisteredPasskey) {
+      toast.message(
+        t(
+          "مفتاح المرور مسجل بالفعل. استخدم البصمة من صفحة الدخول.",
+          "A passkey is already registered. Use it from the sign-in page.",
+        ),
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase.auth.registerPasskey();
@@ -61,7 +74,15 @@ function PasskeysPage() {
       toast.success(t("تم تسجيل البصمة / Face ID لهذا الجهاز", "Passkey registered for this device"));
       await refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(
+        message.toLowerCase().includes("previously registered")
+          ? t(
+              "هذا المفتاح مسجل بالفعل. استخدم البصمة من صفحة الدخول.",
+              "This passkey is already registered. Use it from the sign-in page.",
+            )
+          : message,
+      );
     } finally {
       setSaving(false);
     }
@@ -106,10 +127,27 @@ function PasskeysPage() {
             </Badge>
           </div>
 
-          <Button className="gap-2" onClick={register} disabled={!supported || saving}>
-            <Fingerprint className="h-4 w-4" />
-            {saving ? t("جاري التسجيل...", "Registering...") : t("إضافة بصمة / Face ID لهذا الجهاز", "Add Face ID / biometric passkey")}
-          </Button>
+          {loading ? (
+            <div className="h-10 w-64 animate-pulse rounded-md bg-muted" aria-label={t("جاري التحقق من مفاتيح المرور", "Checking passkeys")} />
+          ) : hasRegisteredPasskey ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-medium">{t("مفتاح المرور جاهز للاستخدام", "Your passkey is ready to use")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("لا تحتاج إلى إضافته مرة أخرى على هذا الجهاز.", "You do not need to add it again on this device.")}
+                </div>
+              </div>
+              <Button type="button" variant="outline" className="gap-2" onClick={() => navigate({ to: "/login" })}>
+                <LogIn className="h-4 w-4" />
+                {t("الذهاب إلى صفحة الدخول", "Go to sign in")}
+              </Button>
+            </div>
+          ) : (
+            <Button className="gap-2" onClick={register} disabled={!supported || saving}>
+              <Fingerprint className="h-4 w-4" />
+              {saving ? t("جاري التسجيل...", "Registering...") : t("إضافة بصمة / Face ID لهذا الجهاز", "Add Face ID / biometric passkey")}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
