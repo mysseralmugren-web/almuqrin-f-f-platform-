@@ -5,10 +5,11 @@ on:
   push:
     branches:
       - main
-      - feat/android-capacitor-app
+      - feat/android-release-branding
     paths:
       - "capacitor.config.json"
       - ".github/workflows/android-build.yml"
+      - "public/brand/**"
       - "android/**"
 
 permissions:
@@ -17,7 +18,7 @@ permissions:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -34,32 +35,53 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Install Capacitor toolchain
-        run: npm install --no-save --legacy-peer-deps @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+      - name: Install Capacitor and asset toolchain
+        run: |
+          npm install --no-save --legacy-peer-deps @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/assets@3
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq imagemagick
 
       - name: Prepare remote-shell webDir
         run: |
           mkdir -p dist
           printf '<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>' > dist/index.html
 
+      - name: Prepare branded Android assets
+        run: |
+          mkdir -p assets
+          convert public/brand/almugren-furniture-logo.jpeg -resize 720x720 -gravity center -background '#ECEEF1' -extent 1024x1024 assets/icon.png
+          convert public/brand/almugren-furniture-logo.jpeg -resize 900x900 -gravity center -background '#ECEEF1' -extent 1440x2560 assets/splash.png
+
       - name: Generate Android project
         run: |
+          rm -rf android
           npx cap add android
           npx cap sync android
+          npx capacitor-assets generate --android --iconBackgroundColor '#ECEEF1' --iconBackgroundColorDark '#1F3656' --splashBackgroundColor '#ECEEF1' --splashBackgroundColorDark '#1F3656'
 
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Build release AAB
+      - name: Build release APK and AAB
         working-directory: android
-        run: ./gradlew bundleRelease --no-daemon
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          ./gradlew bundleRelease --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: AlMuqrin-Factory-Hub-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlMuqrin-Factory-Hub-release-apk-unsigned
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
           retention-days: 14
 
