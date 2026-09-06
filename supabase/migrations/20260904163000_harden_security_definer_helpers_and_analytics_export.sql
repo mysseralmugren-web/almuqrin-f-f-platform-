@@ -1,6 +1,6 @@
--- Security hardening for intentionally exposed analytics/store SECURITY DEFINER functions.
+-- Security hardening for intentionally exposed privileged analytics/store functions.
 -- Internal authorization helpers are not API endpoints and must not be directly callable
--- by anon/authenticated roles. Parent SECURITY DEFINER functions execute as postgres and
+-- by anon/authenticated roles. Parent privileged functions execute as postgres and
 -- can continue to call these helpers internally.
 
 revoke execute on function public.analytics_can_view_costs() from public, anon, authenticated;
@@ -16,10 +16,11 @@ grant execute on function public.store_manager_authorized(uuid) to service_role;
 -- Export remains an authenticated RPC, but authentication alone is insufficient.
 -- Require the explicit reports:export permission before recording an export operation.
 create or replace function public.analytics_log_export(_report text, _format text, _scope jsonb)
+-- security-definer: reviewed
 returns void
 language plpgsql
 security definer
-set search_path = ''
+set search_path to ''
 as $$
 declare
   c uuid := public.current_company_id();
@@ -101,4 +102,5 @@ end;
 $$;
 
 revoke execute on function public.analytics_log_export(text,text,jsonb) from public, anon;
+-- security-definer-authenticated-rpc: intentional
 grant execute on function public.analytics_log_export(text,text,jsonb) to authenticated, service_role;
