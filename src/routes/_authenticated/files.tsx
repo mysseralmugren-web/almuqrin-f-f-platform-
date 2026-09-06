@@ -38,6 +38,17 @@ async function uploadDirect(signedUrl:string,file:File,onProgress:(progress:numb
   request.send(file);
  });
 }
+async function uploadSigned(signedUrl:string,file:File,onProgress:(progress:number)=>void){
+ await new Promise<void>((resolve,reject)=>{
+  const request=new XMLHttpRequest();
+  request.open("PUT",signedUrl);
+  if(file.type)request.setRequestHeader("content-type",file.type);
+  request.upload.onprogress=event=>{if(event.lengthComputable)onProgress(Math.min(80,45+Math.round(event.loaded/event.total*35)))};
+  request.onerror=()=>reject(new Error("SIGNED_UPLOAD_NETWORK_FAILED"));
+  request.onload=()=>request.status>=200&&request.status<300?resolve():reject(new Error(`SIGNED_UPLOAD_FAILED: ${request.status} ${request.responseText}`));
+  request.send(file);
+ });
+}
 async function uploadResumable(path:string,token:string,signedUrl:string,file:File,onProgress:(progress:number)=>void){
  const signed=new URL(signedUrl);
  const host=signed.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co");
@@ -64,7 +75,31 @@ function FilesCenter(){
  const t=useT(),qc=useQueryClient(),input=useRef<HTMLInputElement>(null),camera=useRef<HTMLInputElement>(null);const list=useServerFn(listFileCenter),signed=useServerFn(createAttachmentUploadUrl),register=useServerFn(registerAttachment),url=useServerFn(getAttachmentUrl),update=useServerFn(updateAttachment);
  const {data:files=[],isLoading}=useQuery({queryKey:["file-center"],queryFn:()=>list({})});const [queue,setQueue]=useState<UploadItem[]>([]),[category,setCategory]=useState<Category>("other"),[filter,setFilter]=useState("all"),[query,setQuery]=useState(""),[trash,setTrash]=useState(false),[drag,setDrag]=useState(false);
  const add=(incoming:File[])=>setQueue(q=>[...q,...incoming.map(file=>({id:crypto.randomUUID(),file,progress:0,status:file.size>maxFor(file)?"error" as const:"ready" as const,error:file.size>maxFor(file)?tooLargeMessage(file,t):undefined}))]);const patch=(id:string,p:Partial<UploadItem>)=>setQueue(q=>q.map(x=>x.id===id?{...x,...p}:x));
- const upload=useMutation({mutationFn:async()=>{for(const item of queue.filter(x=>x.status!=="done")){if(item.file.size>maxFor(item.file))continue;try{patch(item.id,{status:"processing",progress:10,error:undefined});const f=await compress(item.file),checksum=await hash(f);const exists=(files as any[]).some(x=>x.checksum===checksum&&!x.deleted_at);if(exists)throw new Error(t("هذا الملف مرفوع مسبقًا","Duplicate file"));const s=await signed({data:{entity:"file_center",entity_id:crypto.randomUUID(),file_name:f.name,content_type:f.type||null,size_bytes:f.size}});patch(item.id,{status:"uploading",progress:45});if(f.size>DEFAULT_ATTACHMENT_MAX_BYTES){try{await uploadDirect(s.signed_url,f,progress=>patch(item.id,{progress}))}catch{await uploadResumable(s.path,s.token,s.signed_url,f,progress=>patch(item.id,{progress}))}}else{const {error}=await supabase.storage.from(BUCKET).uploadToSignedUrl(s.path,s.token,f);if(error)throw error;patch(item.id,{progress:80})}await register({data:{entity:"file_center",entity_id:crypto.randomUUID(),object_path:s.path,file_name:item.file.name,content_type:f.type,size_bytes:f.size,title:item.file.name.replace(/\.[^.]+$/, ""),category,checksum}});patch(item.id,{status:"done",progress:100})}catch(e){patch(item.id,{status:"error",progress:0,error:e instanceof Error?e.message:String(e)})}}},onSuccess:()=>{void qc.invalidateQueries({queryKey:["file-center"]});toast.success(t("اكتمل رفع الملفات","Uploads completed"))}});
+ const upload=useMutation({mutationFn:async()=>{
+  const uploadOne=async(item:UploadItem)=>{
+   if(item.file.size>maxFor(item.file))return;
+   try{
+    patch(item.id,{status:"processing",progress:10,error:undefined});
+    const f=await compress(item.file),checksum=await hash(f);
+    const exists=(files as any[]).some(x=>x.checksum===checksum&&!x.deleted_at);
+    if(exists)throw new Error(t("هذا الملف مرفوع مسبقًا","Duplicate file"));
+    const s=await signed({data:{entity:"file_center",entity_id:crypto.randomUUID(),file_name:f.name,content_type:f.type||null,size_bytes:f.size}});
+    patch(item.id,{status:"uploading",progress:45});
+    if(f.size>DEFAULT_ATTACHMENT_MAX_BYTES){
+     try{await uploadDirect(s.signed_url,f,progress=>patch(item.id,{progress}))}
+     catch{await uploadResumable(s.path,s.token,s.signed_url,f,progress=>patch(item.id,{progress}))}
+    }else{
+     try{await uploadSigned(s.signed_url,f,progress=>patch(item.id,{progress}))}
+     catch{const {error}=await supabase.storage.from(BUCKET).uploadToSignedUrl(s.path,s.token,f);if(error)throw error;patch(item.id,{progress:80})}
+    }
+    await register({data:{entity:"file_center",entity_id:crypto.randomUUID(),object_path:s.path,file_name:item.file.name,content_type:f.type,size_bytes:f.size,title:item.file.name.replace(/\.[^.]+$/, ""),category,checksum}});
+    patch(item.id,{status:"done",progress:100});
+   }catch(e){patch(item.id,{status:"error",progress:0,error:e instanceof Error?e.message:String(e)})}
+  };
+  const pending=queue.filter(x=>x.status!=="done");
+  for(let i=0;i<pending.length;i+=2)await Promise.all(pending.slice(i,i+2).map(uploadOne));
+ },onSuccess:()=>{void qc.invalidateQueries({queryKey:["file-center"]});toast.success(t("اكتمل رفع الملفات","Uploads completed"))}});
+
  const change=useMutation({mutationFn:(data:{id:string;deleted_at:string|null})=>update({data}),onSuccess:()=>void qc.invalidateQueries({queryKey:["file-center"]})});
  const shown=(files as any[]).filter(f=>Boolean(f.deleted_at)===trash&&(filter==="all"||f.category===filter)&&`${f.title||f.file_name} ${f.file_name}`.toLowerCase().includes(query.toLowerCase()));
  async function open(a:any,download=false){const x=await url({data:{attachment_id:a.id}});if(download){const link=document.createElement("a");link.href=x.url;link.download=a.file_name;link.click()}else window.open(x.url,"_blank","noopener")}
