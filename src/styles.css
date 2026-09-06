@@ -227,3 +227,15 @@
 .store-nav__cta:hover { transform: translateY(-1px); background: #f1d292; }
 .storefront-shell section { scroll-margin-top: 5.2rem; }
 @media (max-width: 720px) { .store-nav__inner { min-height: 4.35rem; gap: .7rem; padding: 0 .9rem; } .store-nav__brand { font-size: 1rem; } .store-nav__links { justify-content: flex-start; gap: 0; } .store-nav__links a { padding: .55rem .58rem; font-size: .7rem; } .store-nav__cta { display: none; } }
+
+
+/* Factory OS premium shell: restrained depth for long operational sessions. */
+.factory-app-shell { background: radial-gradient(circle at 85% -10%, color-mix(in oklch, var(--primary) 11%, transparent), transparent 32rem), radial-gradient(circle at 12% 110%, color-mix(in oklch, var(--accent) 13%, transparent), transparent 30rem), var(--surface); }
+.factory-app-main { position: relative; isolation: isolate; }
+.factory-app-main::before { position: fixed; inset: 4.35rem 0 0; z-index: -1; content: ""; pointer-events: none; opacity: .4; background-image: linear-gradient(color-mix(in oklch, var(--primary) 5%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, var(--primary) 5%, transparent) 1px, transparent 1px); background-size: 2.5rem 2.5rem; mask-image: linear-gradient(to bottom, #000, transparent 55%); }
+.factory-app-header { border-color: color-mix(in oklch, var(--border) 75%, transparent); background: color-mix(in oklch, var(--card) 78%, transparent); box-shadow: 0 .7rem 2rem color-mix(in oklch, var(--primary) 7%, transparent); backdrop-filter: blur(20px) saturate(1.15); }
+.factory-app-shell [data-slot="card"] { border-color: color-mix(in oklch, var(--border) 82%, var(--primary)); box-shadow: 0 .35rem .9rem color-mix(in oklch, var(--primary) 5%, transparent), 0 1.25rem 2.8rem color-mix(in oklch, var(--foreground) 4%, transparent); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+@media (hover: hover) { .factory-app-shell [data-slot="card"]:hover { transform: translateY(-2px); border-color: color-mix(in oklch, var(--accent) 38%, var(--border)); box-shadow: 0 .65rem 1.3rem color-mix(in oklch, var(--primary) 8%, transparent), 0 1.75rem 3.4rem color-mix(in oklch, var(--foreground) 5%, transparent); } }
+.factory-app-shell [data-slot="sidebar"] { background: linear-gradient(160deg, color-mix(in oklch, var(--sidebar) 96%, #07111c), var(--sidebar)); box-shadow: 1.2rem 0 3rem color-mix(in oklch, var(--foreground) 9%, transparent); }
+.factory-app-shell [data-slot="sidebar-menu-button"][data-active="true"] { background: linear-gradient(90deg, color-mix(in oklch, var(--sidebar-accent) 82%, var(--accent)), var(--sidebar-accent)); box-shadow: inset 3px 0 0 var(--accent), 0 .35rem .9rem rgb(0 0 0 / .14); }
+@media (prefers-reduced-motion: reduce) { .factory-app-shell [data-slot="card"] { transition: none; } .factory-app-shell [data-slot="card"]:hover { transform: none; } }
