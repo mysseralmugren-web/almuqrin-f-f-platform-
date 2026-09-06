@@ -29,16 +29,18 @@ async function uploadResumable(path:string,token:string,signedUrl:string,file:Fi
  const signed=new URL(signedUrl);
  const host=signed.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co");
  const endpoint=`${signed.protocol}//${host}/storage/v1/upload/resumable`;
- const creation=await fetch(endpoint,{method:"POST",headers:{"tus-resumable":"1.0.0","upload-length":String(file.size),"upload-metadata":[`bucketName ${encodeMetadata(BUCKET)}`,`objectName ${encodeMetadata(path)}`,`contentType ${encodeMetadata(file.type||"application/octet-stream")}`].join(","),"x-signature":token,"x-upsert":"false"}});
- if(!creation.ok)throw new Error(`RESUMABLE_UPLOAD_CREATE_FAILED: ${creation.status}`);
+ const {data:{session}}=await supabase.auth.getSession();
+ const auth=session?.access_token?{authorization:`Bearer ${session.access_token}`} : {};
+ const creation=await fetch(endpoint,{method:"POST",headers:{"tus-resumable":"1.0.0","upload-length":String(file.size),"upload-metadata":[`bucketName ${encodeMetadata(BUCKET)}`,`objectName ${encodeMetadata(path)}`,`contentType ${encodeMetadata(file.type||"application/octet-stream")}`].join(","),"x-signature":token,...auth}});
+ if(!creation.ok)throw new Error(`RESUMABLE_UPLOAD_CREATE_FAILED: ${creation.status} ${await creation.text()}`);
  const location=creation.headers.get("location");
  if(!location)throw new Error("RESUMABLE_UPLOAD_LOCATION_MISSING");
  const uploadUrl=new URL(location,endpoint).toString();
  const chunkSize=6*1024*1024; let offset=0;
  while(offset<file.size){
   const chunk=file.slice(offset,Math.min(offset+chunkSize,file.size));
-  const response=await fetch(uploadUrl,{method:"PATCH",headers:{"tus-resumable":"1.0.0","upload-offset":String(offset),"content-type":"application/offset+octet-stream","x-signature":token},body:chunk});
-  if(!response.ok)throw new Error(`RESUMABLE_UPLOAD_CHUNK_FAILED: ${response.status}`);
+  const response=await fetch(uploadUrl,{method:"PATCH",headers:{"tus-resumable":"1.0.0","upload-offset":String(offset),"content-type":"application/offset+octet-stream","x-signature":token,...auth},body:chunk});
+  if(!response.ok)throw new Error(`RESUMABLE_UPLOAD_CHUNK_FAILED: ${response.status} ${await response.text()}`);
   const next=Number(response.headers.get("upload-offset"));
   offset=Number.isFinite(next)&&next>offset?next:offset+chunk.size;
   onProgress(Math.min(80,45+Math.round(offset/file.size*35)));
