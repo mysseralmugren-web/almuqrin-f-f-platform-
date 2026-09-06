@@ -1,0 +1,78 @@
+name: Android Google Play Release Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/android-play-release.yml"
+      - "capacitor.config.json"
+      - "public/brand/**"
+
+permissions:
+  contents: read
+
+jobs:
+  build-play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 16 SDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install Capacitor toolchain
+        run: |
+          npm install --no-save --legacy-peer-deps @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/assets@3
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq imagemagick
+
+      - name: Prepare web shell and assets
+        run: |
+          mkdir -p dist assets
+          printf '<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>' > dist/index.html
+          convert public/brand/almugren-furniture-logo.jpeg -resize 720x720 -gravity center -background '#ECEEF1' -extent 1024x1024 assets/icon.png
+          convert public/brand/almugren-furniture-logo.jpeg -resize 900x900 -gravity center -background '#ECEEF1' -extent 1440x2560 assets/splash.png
+
+      - name: Generate Android project
+        run: |
+          rm -rf android
+          npx cap add android
+          npx cap sync android
+          npx capacitor-assets generate --android --iconBackgroundColor '#ECEEF1' --iconBackgroundColorDark '#1F3656' --splashBackgroundColor '#ECEEF1' --splashBackgroundColorDark '#1F3656'
+
+      - name: Enforce Google Play target API 36
+        run: |
+          sed -i 's/compileSdkVersion = .*/compileSdkVersion = 36/' android/variables.gradle
+          sed -i 's/targetSdkVersion = .*/targetSdkVersion = 36/' android/variables.gradle
+          grep -E 'compileSdkVersion|targetSdkVersion' android/variables.gradle
+
+      - name: Build Google Play AAB
+        working-directory: android
+        run: ./gradlew bundleRelease --no-daemon
+
+      - name: Upload Google Play AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlMuqrin-Factory-Hub-Google-Play-AAB-unsigned
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
