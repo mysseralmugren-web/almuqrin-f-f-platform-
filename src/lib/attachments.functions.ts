@@ -5,6 +5,16 @@ import { z } from "zod";
 type Ctx = { supabase: any; userId: string };
 
 export const BUCKET = "mfg-attachments";
+export const DEFAULT_ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
+export const CATALOG_PDF_MAX_BYTES = 200 * 1024 * 1024;
+
+function isCatalogPdf(input: { entity: string; file_name: string; content_type?: string | null }) {
+  return input.entity === "file_center" && (input.content_type === "application/pdf" || /\.pdf$/i.test(input.file_name));
+}
+
+function attachmentMaxBytes(input: { entity: string; file_name: string; content_type?: string | null }) {
+  return isCatalogPdf(input) ? CATALOG_PDF_MAX_BYTES : DEFAULT_ATTACHMENT_MAX_BYTES;
+}
 
 async function companyOf(c: Ctx): Promise<string> {
   const { data, error } = await c.supabase.from("profiles").select("company_id").eq("id", c.userId).maybeSingle();
@@ -44,12 +54,15 @@ export const createAttachmentUploadUrl = createServerFn({ method: "POST" })
         ]),
         entity_id: z.string().uuid(),
         file_name: z.string().trim().min(1).max(160),
+        content_type: z.string().max(120).optional().nullable(),
+        size_bytes: z.number().int().nonnegative().max(CATALOG_PDF_MAX_BYTES).optional().nullable(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
     const company_id = await companyOf(c);
+    if (data.size_bytes && data.size_bytes > attachmentMaxBytes(data)) throw new Error("FILE_TOO_LARGE");
     const path = `${company_id}/${data.entity}/${data.entity_id}/${crypto.randomUUID()}-${safeName(data.file_name)}`;
     const { data: signed, error } = await c.supabase.storage.from(BUCKET).createSignedUploadUrl(path);
     if (error) throw new Error(error.message);
@@ -78,6 +91,7 @@ export const registerAttachment = createServerFn({ method: "POST" })
     const c = context as Ctx;
     const company_id = await companyOf(c);
     if (!data.object_path.startsWith(`${company_id}/`)) throw new Error("PATH_OUTSIDE_COMPANY");
+    if (data.size_bytes && data.size_bytes > attachmentMaxBytes(data)) throw new Error("FILE_TOO_LARGE");
     const { data: row, error } = await c.supabase
       .from("attachments")
       .insert({ ...data, company_id, created_by: c.userId })
