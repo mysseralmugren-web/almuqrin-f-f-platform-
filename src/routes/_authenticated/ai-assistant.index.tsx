@@ -18,6 +18,9 @@ import {
   getAiAccess, listAiJobs, createAiJob, createAiUploadUrl, registerAiFile, runAiJob, cancelAiJob, deleteAiJob,
 } from "@/lib/ai.functions";
 
+const MAX_AI_FILE_MB = 20;
+const MAX_AI_FILE_BYTES = MAX_AI_FILE_MB * 1024 * 1024;
+
 export const Route = createFileRoute("/_authenticated/ai-assistant/")({
   head: () => ({
     meta: [
@@ -68,21 +71,43 @@ function AiInbox() {
     for (const f of files) {
       const bad = validateFile(f);
       if (bad) return fail(new Error(bad));
+      if (f.size > MAX_AI_FILE_BYTES) {
+        return toast.error(
+          t(
+            `حجم الملف ${Math.ceil(f.size / 1024 / 1024)} ميجابايت. حد المساعد العام ${MAX_AI_FILE_MB} ميجابايت. استخدم «استخراج المتجر من PDF» للملفات الكبيرة.`,
+            `File size is ${Math.ceil(f.size / 1024 / 1024)}MB. The general AI assistant limit is ${MAX_AI_FILE_MB}MB. Use PDF catalog ingestion for larger files.`,
+          ),
+        );
+      }
     }
+
     setBusy(true);
     try {
       const job = await addJob({ data: { kind, title: title || null, idempotency_key: newIdempotencyKey(kind), input_params: note ? { context: note } : {} } });
-      for (const f of files) {
-        const signed = await signUpload({ data: { job_id: job.id, file_name: f.name, mime_type: f.type as any, size_bytes: f.size } });
-        await uploadToSignedUrl(signed.path, signed.token, f);
-        await register({ data: { job_id: job.id, object_path: signed.path, file_name: f.name, mime_type: f.type as any, size_bytes: f.size } });
+
+      try {
+        for (const f of files) {
+          const signed = await signUpload({ data: { job_id: job.id, file_name: f.name, mime_type: f.type as any, size_bytes: f.size } });
+          await uploadToSignedUrl(signed.path, signed.token, f);
+          await register({ data: { job_id: job.id, object_path: signed.path, file_name: f.name, mime_type: f.type as any, size_bytes: f.size } });
+        }
+      } catch (uploadError) {
+        try {
+          await remove({ data: { id: job.id } });
+        } catch {
+          // Best-effort cleanup. The original upload error is the actionable error for the user.
+        }
+        refresh();
+        throw uploadError;
       }
+
       toast.success(t("تم إنشاء المهمة، جارٍ التحليل", "Job created, analysis started"));
       setFiles([]);
       setTitle("");
       setNote("");
       if (fileRef.current) fileRef.current.value = "";
       refresh();
+
       await run({ data: { id: job.id, context_note: note || null } });
       toast.success(t("اكتمل التحليل — النتائج بانتظار المراجعة", "Analysis completed — results await review"));
     } catch (e) {
@@ -143,11 +168,17 @@ function AiInbox() {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label>{t("الملفات (PDF أو صورة، حتى 20 ميجابايت)", "Files (PDF or image, up to 20MB)")}</Label>
+            <Label>{t(`الملفات (PDF أو صورة، حتى ${MAX_AI_FILE_MB} ميجابايت)`, `Files (PDF or image, up to ${MAX_AI_FILE_MB}MB)`)}</Label>
             <Input ref={fileRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(e) => setFiles(Array.from(e.target.files ?? []))} />
             {files.length > 0 && (
               <p className="text-xs text-muted-foreground" dir="ltr">{files.map((f) => f.name).join(" · ")}</p>
             )}
+            <p className="text-xs text-muted-foreground">
+              {t("لملفات الكتالوج الكبيرة حتى 200 ميجابايت:", "For large catalog PDFs up to 200MB:")}{" "}
+              <Link to="/catalog-ingestion" className="font-medium text-primary underline underline-offset-2">
+                {t("استخراج المتجر من PDF", "PDF catalog ingestion")}
+              </Link>
+            </p>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>{t("ملاحظات أو سياق إضافي", "Extra context")}</Label>
