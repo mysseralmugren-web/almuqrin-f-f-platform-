@@ -1,6 +1,5 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -14,7 +13,7 @@ import {
   Avatar,
   AvatarFallback,
 } from "@/components/ui/avatar";
-import { Bell, Search, Moon, Sun, Globe, LogOut, User as UserIcon, Settings as SettingsIcon, Fingerprint } from "lucide-react";
+import { Bell, Moon, Sun, Globe, LogOut, User as UserIcon, Settings as SettingsIcon, Fingerprint } from "lucide-react";
 import { useTheme, useT } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "@tanstack/react-router";
@@ -34,14 +33,7 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-card/80 px-3 backdrop-blur sm:gap-4 sm:px-6">
       <SidebarTrigger className="text-foreground" />
-
-      <div className="relative hidden min-w-0 flex-1 md:block">
-        <Search className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground ltr:left-3 rtl:right-3" />
-        <Input
-          placeholder={t("ابحث في كل الوحدات...", "Search across all modules...")}
-          className="h-10 border-border bg-surface ltr:pl-10 rtl:pr-10"
-        />
-      </div>
+<div className="hidden min-w-0 flex-1 md:block" aria-hidden />
 
       <div className="ms-auto flex items-center gap-1 sm:gap-2">
         <Button
@@ -61,33 +53,9 @@ export function AppHeader() {
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 h-2 w-2 rounded-full bg-accent ltr:right-1.5 rtl:left-1.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              <span>{t("الإشعارات", "Notifications")}</span>
-              <Badge variant="secondary" className="text-[10px]">3</Badge>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {[
-              { ar: "طلب إنتاج جديد #PO-2041", en: "New production order #PO-2041" },
-              { ar: "انخفاض مخزون خشب الزان", en: "Beech wood stock is low" },
-              { ar: "تمت الموافقة على عرض السعر Q-118", en: "Quotation Q-118 approved" },
-            ].map((n, i) => (
-              <DropdownMenuItem key={i} className="flex-col items-start gap-1 py-3">
-                <div className="text-sm font-medium">{t(n.ar, n.en)}</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {t("قبل دقائق", "A few minutes ago")}
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="ghost" size="icon" className="relative rounded-xl" aria-label={t("الإشعارات", "Notifications")} onClick={() => navigate({ to: "/integrations/notifications" })}>
+          <Bell className="h-4 w-4" />
+        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -123,7 +91,7 @@ export function AppHeader() {
               </Badge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate({ to: "/admin/profile" })}>
               <UserIcon className="me-2 h-4 w-4" />
               {t("الملف الشخصي", "Profile")}
             </DropdownMenuItem>
