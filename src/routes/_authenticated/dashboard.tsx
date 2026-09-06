@@ -214,9 +214,14 @@ function DashboardPage() {
             )}
           </p>
         </div>
-        <Button className="shrink-0 gradient-accent font-semibold text-primary shadow-elegant">
-          <Sparkles className="me-2 h-4 w-4" />
-          {t("اسأل المساعد الذكي", "Ask AI Assistant")}
+        <Button
+          asChild
+          className="shrink-0 rounded-xl border border-slate-300 bg-gradient-to-b from-slate-100 via-slate-200 to-slate-300 px-5 font-semibold text-slate-900 shadow-md transition hover:from-white hover:via-slate-100 hover:to-slate-200 hover:shadow-lg"
+        >
+          <a href="/ai-assistant" aria-label={t("اسأل المساعد الذكي", "Ask AI Assistant")}>
+            <Sparkles className="me-2 h-4 w-4 text-slate-700" />
+            {t("اسأل المساعد الذكي", "Ask AI Assistant")}
+          </a>
         </Button>
       </div>
 
