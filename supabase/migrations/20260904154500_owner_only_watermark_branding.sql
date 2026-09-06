@@ -2,6 +2,7 @@
 -- Reads remain governed by existing RLS. This trigger protects writes even if
 -- a client attempts to bypass the UI and call Supabase directly.
 
+-- security-definer: reviewed
 create or replace function public.enforce_watermark_owner_only()
 returns trigger
 language plpgsql
