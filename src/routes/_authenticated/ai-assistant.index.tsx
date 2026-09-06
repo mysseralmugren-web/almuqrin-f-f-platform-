@@ -51,6 +51,7 @@ function AiInbox() {
   const [filterKind, setFilterKind] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const accessQ = useQuery({ queryKey: ["ai-access"], queryFn: () => fetchAccess() });
   const jobsQ = useQuery({
@@ -94,7 +95,29 @@ function AiInbox() {
 
   const mRun = useMutation({ mutationFn: (id: string) => run({ data: { id } }), onSuccess: () => { toast.success(t("اكتمل التحليل", "Analysis completed")); refresh(); }, onError: (e) => { fail(e); refresh(); } });
   const mCancel = useMutation({ mutationFn: (id: string) => cancel({ data: { id } }), onSuccess: refresh, onError: fail });
-  const mDelete = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => { toast.success(t("تم الحذف مع ملفاته", "Deleted with its files")); refresh(); }, onError: fail });
+  const mDelete = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onMutate: async (id: string) => {
+      setDeletingId(id);
+      await qc.cancelQueries({ queryKey: ["ai-jobs"] });
+      const snapshots = qc.getQueriesData({ queryKey: ["ai-jobs"] });
+      qc.setQueriesData({ queryKey: ["ai-jobs"] }, (old: any) =>
+        Array.isArray(old) ? old.filter((job: any) => job.id !== id) : old,
+      );
+      return { snapshots };
+    },
+    onSuccess: () => {
+      toast.success(t("تم الحذف مع ملفاته", "Deleted with its files"));
+    },
+    onError: (e, _id, context) => {
+      context?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+      fail(e);
+    },
+    onSettled: () => {
+      setDeletingId(null);
+      refresh();
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -195,14 +218,16 @@ function AiInbox() {
                     <TableCell className="text-end">
                       <div className="flex justify-end gap-1">
                         {(j.status === "queued" || j.status === "failed") && (
-                          <Button size="sm" variant="ghost" onClick={() => mRun.mutate(j.id)} disabled={mRun.isPending}>
+                          <Button size="sm" variant="ghost" onClick={() => mRun.mutate(j.id)} disabled={mRun.isPending || deletingId === j.id}>
                             {j.status === "failed" ? <RefreshCw className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                           </Button>
                         )}
                         {j.status === "queued" && (
-                          <Button size="sm" variant="ghost" onClick={() => mCancel.mutate(j.id)}><Ban className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="ghost" onClick={() => mCancel.mutate(j.id)} disabled={deletingId === j.id}><Ban className="h-4 w-4" /></Button>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => mDelete.mutate(j.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => mDelete.mutate(j.id)} disabled={mDelete.isPending || deletingId === j.id}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -215,4 +240,3 @@ function AiInbox() {
     </div>
   );
 }
-
