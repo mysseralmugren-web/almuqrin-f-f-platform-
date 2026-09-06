@@ -57,7 +57,7 @@ export const registerAttachment = createServerFn({ method: "POST" })
         object_path: z.string().min(1).max(400),
         file_name: z.string().min(1).max(160),
         content_type: z.string().max(120).optional().nullable(),
-        size_bytes: z.number().int().nonnegative().max(50 * 1024 * 1024).optional().nullable(),
+        size_bytes: z.number().int().nonnegative().max(200 * 1024 * 1024).optional().nullable(),
         title: z.string().trim().min(1).max(160).optional(),
         description: z.string().max(2000).optional().nullable(),
         category: z.enum(["plans","contracts","invoices","site_photos","designs","other"]).optional(),
