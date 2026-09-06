@@ -1,4 +1,4 @@
--- Require explicit reports:view permission inside client-facing analytics SECURITY DEFINER RPCs.
+-- Require explicit reports:view permission inside client-facing privileged analytics RPCs.
 -- This preserves the existing RPC contracts and tenant scoping while preventing a signed-in
 -- account without report access from invoking analytics endpoints directly through PostgREST.
 --
