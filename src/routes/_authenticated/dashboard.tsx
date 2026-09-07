@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
+import { useModulePermissions } from "@/lib/module-permissions";
+import { MODULES } from "@/lib/modules";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Factory,
@@ -14,6 +16,8 @@ import {
   Activity,
   Sparkles,
   ShieldCheck,
+  AppWindow,
+  ArrowUpLeft,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -54,9 +58,115 @@ function money(value: number, lang: "ar" | "en") {
   }).format(value);
 }
 
+type RoleAppSpec = {
+  key: string;
+  labelAr: string;
+  labelEn: string;
+  descriptionAr: string;
+  descriptionEn: string;
+  assistantAr: string;
+  assistantEn: string;
+  roles: string[];
+  moduleKeys: string[];
+};
+
+const ROLE_APP_SPECS: RoleAppSpec[] = [
+  {
+    key: "owner",
+    labelAr: "تطبيق المالك",
+    labelEn: "Owner App",
+    descriptionAr: "القرار، الموافقات، الأداء والتقارير الموحدة.",
+    descriptionEn: "Decisions, approvals, performance and unified reports.",
+    assistantAr: "مساعد المالك التنفيذي",
+    assistantEn: "Executive owner assistant",
+    roles: ["factory_owner", "general_manager", "super_admin"],
+    moduleKeys: ["dashboard", "reports", "accounting", "mes", "ai-assistant"],
+  },
+  {
+    key: "sales",
+    labelAr: "تطبيق المبيعات",
+    labelEn: "Sales App",
+    descriptionAr: "العملاء، عروض الأسعار، الطلبات والمتابعة اليومية.",
+    descriptionEn: "Customers, quotations, orders and daily follow-up.",
+    assistantAr: "مساعد المبيعات",
+    assistantEn: "Sales assistant",
+    roles: ["sales_manager", "sales_employee", "sales_representative"],
+    moduleKeys: ["crm", "customers", "quotations", "sales", "ai-assistant"],
+  },
+  {
+    key: "production",
+    labelAr: "تطبيق الإنتاج",
+    labelEn: "Production App",
+    descriptionAr: "أوامر التصنيع، مراحل التشغيل والجودة.",
+    descriptionEn: "Manufacturing orders, work stages and quality.",
+    assistantAr: "مساعد الإنتاج",
+    assistantEn: "Production assistant",
+    roles: ["production_manager", "project_manager", "technician", "quality_manager"],
+    moduleKeys: ["mes", "projects", "inventory", "ai-assistant"],
+  },
+  {
+    key: "warehouse",
+    labelAr: "تطبيق المستودع والمشتريات",
+    labelEn: "Warehouse & Purchasing App",
+    descriptionAr: "المخزون، الاستلام، الموردون وأوامر الشراء.",
+    descriptionEn: "Stock, receiving, suppliers and purchase orders.",
+    assistantAr: "مساعد المخزون والمشتريات",
+    assistantEn: "Warehouse and purchasing assistant",
+    roles: ["warehouse_manager", "purchasing_manager", "purchasing_officer"],
+    moduleKeys: ["wms", "inventory", "purchasing", "suppliers", "ai-assistant"],
+  },
+  {
+    key: "finance",
+    labelAr: "تطبيق المالية",
+    labelEn: "Finance App",
+    descriptionAr: "الفواتير، الحسابات والرقابة المالية.",
+    descriptionEn: "Invoices, accounting and financial control.",
+    assistantAr: "مساعد المالية",
+    assistantEn: "Finance assistant",
+    roles: ["accountant", "finance_manager"],
+    moduleKeys: ["accounting", "invoices", "reports", "ai-assistant"],
+  },
+  {
+    key: "hr",
+    labelAr: "تطبيق الموارد البشرية",
+    labelEn: "HR App",
+    descriptionAr: "شؤون الموظفين، البيانات والإجراءات الداخلية.",
+    descriptionEn: "Employees, records and internal processes.",
+    assistantAr: "مساعد الموارد البشرية",
+    assistantEn: "HR assistant",
+    roles: ["hr", "hr_manager"],
+    moduleKeys: ["hr", "documents", "ai-assistant"],
+  },
+  {
+    key: "design",
+    labelAr: "تطبيق التصميم والمشاريع",
+    labelEn: "Design & Projects App",
+    descriptionAr: "ملفات المشاريع، المعاينات والمواصفات.",
+    descriptionEn: "Project files, previews and specifications.",
+    assistantAr: "مساعد التصميم",
+    assistantEn: "Design assistant",
+    roles: ["designer", "project_manager"],
+    moduleKeys: ["projects", "files", "documents", "ai-assistant"],
+  },
+  {
+    key: "store",
+    labelAr: "تطبيق المتجر والتسويق",
+    labelEn: "Store & Marketing App",
+    descriptionAr: "المنتجات، اعتماد المتجر والحملات.",
+    descriptionEn: "Products, store approvals and campaigns.",
+    assistantAr: "مساعد المتجر والتسويق",
+    assistantEn: "Store and marketing assistant",
+    roles: ["marketing_manager", "store_manager"],
+    moduleKeys: ["store-admin", "marketing", "catalog-ingestion", "ai-assistant"],
+  },
+];
+
+const OWNER_ROLES = new Set(["factory_owner", "general_manager", "super_admin"]);
+
 function DashboardPage() {
   const t = useT();
   const { user } = useAuth();
+  const { can, loading: permissionsLoading } = useModulePermissions();
   const [metrics, setMetrics] = useState<Metrics>(ZERO_METRICS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +277,24 @@ function DashboardPage() {
     };
   }, []);
 
+  const roleApps = useMemo(() => {
+    if (permissionsLoading) return [];
+
+    const userRoles = user?.roles ?? [];
+    const isOwner = userRoles.some((role) => OWNER_ROLES.has(role));
+
+    return ROLE_APP_SPECS
+      .filter((app) => isOwner || app.roles.some((role) => userRoles.includes(role)))
+      .map((app) => ({
+        ...app,
+        shortcuts: app.moduleKeys.flatMap((moduleKey) => {
+          const module = MODULES.find((item) => item.key === moduleKey);
+          return module && can(module.key, "view") ? [module] : [];
+        }),
+      }))
+      .filter((app) => app.shortcuts.length > 0);
+  }, [can, permissionsLoading, user?.roles]);
+
   const stats = useMemo(
     () => [
       {
@@ -224,6 +352,84 @@ function DashboardPage() {
           </a>
         </Button>
       </div>
+
+      <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/[0.07] via-background to-background shadow-card">
+        <CardHeader className="border-b border-primary/10 pb-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-primary">
+                <AppWindow className="h-4 w-4" />
+                {t("مساحات العمل", "WORKSPACES")}
+              </div>
+              <CardTitle className="mt-2 text-lg">
+                {t("تطبيقات العمل حسب دورك", "Role-based work apps")}
+              </CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t(
+                  "كل تطبيق يجمع مهام الدور ومساعده الذكي، ولا يظهر إلا ما تسمح به صلاحياتك.",
+                  "Each app groups a role’s tasks and AI assistant, showing only authorized work.",
+                )}
+              </p>
+            </div>
+            <div className="hidden rounded-xl border border-primary/15 bg-background/80 px-3 py-2 text-xs font-medium text-muted-foreground sm:block">
+              {t("تطبيق واحد للمصنع", "One factory app")}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-5">
+          {permissionsLoading ? (
+            <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
+              {t("جارٍ تحميل التطبيقات المسموح بها…", "Loading your authorized apps…")}
+            </div>
+          ) : roleApps.length ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {roleApps.map((app) => (
+                <section
+                  key={app.key}
+                  className="group rounded-2xl border border-border/80 bg-background/90 p-4 transition duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-lg"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="font-bold">{t(app.labelAr, app.labelEn)}</h2>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        {t(app.descriptionAr, app.descriptionEn)}
+                      </p>
+                    </div>
+                    <AppWindow className="h-5 w-5 shrink-0 text-primary/70 transition group-hover:text-primary" />
+                  </div>
+                  <div className="mt-3 rounded-lg bg-primary/[0.07] px-3 py-2 text-xs text-primary">
+                    <Sparkles className="me-1 inline h-3.5 w-3.5" />
+                    {t(app.assistantAr, app.assistantEn)}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {app.shortcuts.map((module, index) => (
+                      <a
+                        key={module.key}
+                        href={module.path}
+                        className={
+                          index === 0
+                            ? "inline-flex items-center rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                            : "inline-flex items-center rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium transition hover:border-primary/35 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        }
+                      >
+                        {t(module.labelAr, module.labelEn)}
+                        {index === 0 && <ArrowUpLeft className="ms-1 h-3.5 w-3.5" />}
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
+              {t(
+                "لا توجد مساحة عمل مفعلة لهذا الحساب. اطلب من مالك المصنع أو الإدارة ربط دورك بصلاحيات الوحدات.",
+                "No workspace is enabled for this account. Ask the factory owner or administrator to assign your role and module permissions.",
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {error && (
         <Card className="border-destructive/40">
