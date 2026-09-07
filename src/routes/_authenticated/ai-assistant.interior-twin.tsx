@@ -131,7 +131,7 @@ function InteriorTwinConsole() {
       toast.success(resolved.needsReview ? "اكتملت المرحلة عبر AI Gateway وبانتظار الاعتماد" : "اكتملت المرحلة عبر AI Gateway");
       await Promise.all([qc.invalidateQueries({ queryKey: ["interior-twin-projects"] }), qc.invalidateQueries({ queryKey: ["interior-twin-runs", activeId] })]);
     },
-    onError: (e: any) => toast.error(e?.message ?? "فشل تنفيذ المرحلة عبر AI Gateway"),
+    onError: async (e: any) => toast.error(await functionErrorMessage(e, "فشل تنفيذ المرحلة عبر AI Gateway")),
   });
 
   const approveM = useMutation({
@@ -214,3 +214,12 @@ async function extractVideoFrames(file: File, count: number): Promise<Attachment
   URL.revokeObjectURL(url); return out;
 }
 function seek(video: HTMLVideoElement, time: number): Promise<void> { return new Promise((resolve, reject) => { const done = () => { cleanup(); resolve(); }; const fail = () => { cleanup(); reject(new Error("تعذر استخراج لقطة من الفيديو")); }; const cleanup = () => { video.removeEventListener("seeked", done); video.removeEventListener("error", fail); }; video.addEventListener("seeked", done, { once: true }); video.addEventListener("error", fail, { once: true }); video.currentTime = time; }); }
+
+async function functionErrorMessage(error: any, fallback: string): Promise<string> {
+  const response = error?.context;
+  if (response && typeof response.clone === "function") {
+    const payload = await response.clone().json().catch(() => null);
+    if (payload?.error) return String(payload.error);
+  }
+  return error?.message && error.message !== "Edge Function returned a non-2xx status code" ? String(error.message) : fallback;
+}
