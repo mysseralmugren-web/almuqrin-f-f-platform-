@@ -124,3 +124,17 @@ export function labelOf(map: Record<string, { ar: string; en: string }>, key: st
   return e ? (ar ? e.ar : e.en) : key;
 }
 
+
+
+export const AI_ROLE_ASSISTANTS = {
+  executive: { ar: "مساعد المالك والإدارة", en: "Executive assistant", roles: ["factory_owner", "general_manager", "super_admin"], focus: "لوحة مؤشرات الإدارة، المخاطر، القرارات والتوصيات التي لا تُنفذ تلقائيًا." },
+  sales: { ar: "مساعد المبيعات والعروض", en: "Sales assistant", roles: ["sales_manager", "sales_employee"], focus: "العملاء، عروض الأسعار، أوامر البيع، الدفعات ومواعيد التسليم." },
+  production: { ar: "مساعد الإنتاج والتخطيط", en: "Production assistant", roles: ["production_manager", "project_manager", "technician"], focus: "أوامر التصنيع، تسلسل العمليات، الطاقة الإنتاجية، الهدر والتسليم." },
+  purchasing_inventory: { ar: "مساعد المشتريات والمخزون", en: "Purchasing & inventory assistant", roles: ["purchasing_manager", "warehouse_manager"], focus: "طلبات الشراء، استلام الخامات، مطابقة المورد، النواقص وإعادة الطلب." },
+  finance: { ar: "مساعد المحاسبة والضريبة", en: "Finance assistant", roles: ["accountant"], focus: "فواتير الموردين، المصروفات، القيود المقترحة وضريبة القيمة المضافة." },
+  hr: { ar: "مساعد الموارد البشرية", en: "HR assistant", roles: ["hr"], focus: "العقود، الحضور، الإجازات والتنبيهات الإدارية دون اتخاذ قرار نهائي." },
+  design: { ar: "مساعد التصميم والهندسة", en: "Design & engineering assistant", roles: ["designer", "production_manager", "project_manager", "technician"], focus: "المقاسات، الخامات، قابلية التصنيع، قوائم المواد والرسومات." },
+  quality: { ar: "مساعد الجودة والاستلام", en: "Quality assistant", roles: ["quality_manager", "production_manager", "technician"], focus: "فحص الجودة، عدم المطابقة، إجراءات التصحيح والتوثيق." },
+  store: { ar: "مساعد المتجر والمحتوى", en: "Store assistant", roles: ["marketing_manager", "store_manager", "sales_manager"], focus: "وصف المنتجات، مواصفاتها، محتوى المتجر والنشر بعد المراجعة." },
+} as const;
+export type AiRoleAssistantKey = keyof typeof AI_ROLE_ASSISTANTS;

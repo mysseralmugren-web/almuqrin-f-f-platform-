@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import {
-  AI_ALLOWED_EXT, AI_ALLOWED_MIME, AI_DEFAULT_MODEL, AI_KIND_ROLES, AI_TEXT_MODELS,
-  seatingCapacity, type AiJobKind,
+  AI_ALLOWED_EXT, AI_ALLOWED_MIME, AI_DEFAULT_MODEL, AI_KIND_ROLES, AI_ROLE_ASSISTANTS, AI_TEXT_MODELS,
+  seatingCapacity, type AiJobKind, type AiRoleAssistantKey,
 } from "@/lib/ai-constants";
 
 type Ctx = { supabase: any; userId: string };
@@ -170,12 +170,16 @@ export const createAiJob = createServerFn({ method: "POST" })
       ]).optional().nullable(),
       target_id: uuid.optional().nullable(),
       input_params: z.record(z.string(), z.any()).optional(),
+      assistant_key: z.enum(["executive","sales","production","purchasing_inventory","finance","hr","design","quality","store"]).optional().nullable(),
       model: z.enum(AI_TEXT_MODELS).optional().nullable(),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
-    await requireKind(c, data.kind);
+    const roles = await requireKind(c, data.kind);
+    const assistant = data.assistant_key ? AI_ROLE_ASSISTANTS[data.assistant_key as AiRoleAssistantKey] : null;
+    const isAdmin = roles.some((r) => (ADMIN as readonly string[]).includes(r));
+    if (assistant && !isAdmin && !assistant.roles.some((r) => roles.includes(r))) throw new Error("FORBIDDEN_ROLE");
     const company_id = await companyOf(c);
     const s = await settingsOf(c, company_id);
     if (!s.enabled) throw new Error("AI_DISABLED");
@@ -203,7 +207,7 @@ export const createAiJob = createServerFn({ method: "POST" })
         max_attempts: s.max_attempts,
         target_entity: data.target_entity ?? null,
         target_id: data.target_id ?? null,
-        input_params: data.input_params ?? {},
+        input_params: { ...(data.input_params ?? {}), assistant_key: data.assistant_key ?? null },
         requested_by: c.userId,
       }).select("id, job_number").single(),
     );
@@ -434,6 +438,7 @@ export const runAiJob = createServerFn({ method: "POST" })
         model: job.model,
         files: payloads,
         context: data.context_note ?? (job.input_params?.context as string | undefined),
+        assistantKey: (job.input_params?.assistant_key as AiRoleAssistantKey | null | undefined) ?? null,
         promptVersion: job.prompt_version,
       });
       await persistResult(c, job, company_id, parsed);

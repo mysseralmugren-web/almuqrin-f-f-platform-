@@ -1,4 +1,4 @@
-import { AI_DEFAULT_MODEL, AI_IMAGE_MODEL, AI_TEXT_MODELS, type AiJobKind } from "./ai-constants";
+import { AI_DEFAULT_MODEL, AI_IMAGE_MODEL, AI_ROLE_ASSISTANTS, AI_TEXT_MODELS, type AiJobKind, type AiRoleAssistantKey } from "./ai-constants";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
@@ -172,11 +172,13 @@ export async function runAnalysis(opts: {
   model?: string | null;
   files: AiFileInput[];
   context?: string;
+  assistantKey?: AiRoleAssistantKey | null;
   promptVersion: string;
 }) {
   const model = pickModel(opts.model);
   const prompt = [
     "أنت محلل مستندات في مصنع أثاث سعودي. اللغة العربية أساسية.",
+    opts.assistantKey ? `أنت تعمل بصفة: ${AI_ROLE_ASSISTANTS[opts.assistantKey].ar}. نطاقك: ${AI_ROLE_ASSISTANTS[opts.assistantKey].focus} لا تنفذ أي قرار أو قيد أو نشر؛ قدّم مسودة وتوصيات قابلة للمراجعة فقط.` : "",
     KIND_PROMPT[opts.kind],
     opts.context ? `سياق إضافي من المستخدم:\n${opts.context}` : "",
     OUTPUT_CONTRACT,
