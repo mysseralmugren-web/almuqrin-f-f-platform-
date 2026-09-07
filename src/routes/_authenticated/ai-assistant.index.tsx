@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileUp, Play, Ban, Trash2, RefreshCw } from "lucide-react";
@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useT, useTheme } from "@/lib/theme";
-import { AI_FILE_KINDS, AI_JOB_KIND, AI_JOB_STATUS, labelOf, type AiJobKind } from "@/lib/ai-constants";
+import { AI_FILE_KINDS, AI_JOB_KIND, AI_JOB_STATUS, AI_ROLE_ASSISTANTS, labelOf, type AiJobKind, type AiRoleAssistantKey } from "@/lib/ai-constants";
 import { AiChip, AiLoading, ConfidenceBadge, newIdempotencyKey, uploadToSignedUrl, useAiFail, validateFile } from "@/components/app/ai-ui";
 import {
   getAiAccess, listAiJobs, createAiJob, createAiUploadUrl, registerAiFile, runAiJob, cancelAiJob, deleteAiJob,
@@ -48,6 +48,7 @@ function AiInbox() {
   const remove = useServerFn(deleteAiJob);
 
   const [kind, setKind] = useState<AiJobKind>("supplier_invoice");
+  const [assistantKey, setAssistantKey] = useState<AiRoleAssistantKey>("executive");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -64,6 +65,12 @@ function AiInbox() {
   });
 
   const allowedKinds = AI_FILE_KINDS.filter((k) => accessQ.data?.kinds?.[k]);
+  const allowedAssistants = Object.entries(AI_ROLE_ASSISTANTS).filter(([, assistant]) =>
+    accessQ.data?.isAdmin || assistant.roles.some((role) => accessQ.data?.roles?.includes(role)),
+  ) as Array<[AiRoleAssistantKey, (typeof AI_ROLE_ASSISTANTS)[AiRoleAssistantKey]]>;
+  useEffect(() => {
+    if (allowedAssistants.length && !allowedAssistants.some(([key]) => key === assistantKey)) setAssistantKey(allowedAssistants[0][0]);
+  }, [accessQ.data?.roles?.join("|"), accessQ.data?.isAdmin, assistantKey, allowedAssistants.length]);
   const refresh = () => qc.invalidateQueries({ queryKey: ["ai-jobs"] });
 
   const submit = async () => {
@@ -83,7 +90,7 @@ function AiInbox() {
 
     setBusy(true);
     try {
-      const job = await addJob({ data: { kind, title: title || null, idempotency_key: newIdempotencyKey(kind), input_params: note ? { context: note } : {} } });
+      const job = await addJob({ data: { kind, title: title || AI_ROLE_ASSISTANTS[assistantKey].ar, idempotency_key: newIdempotencyKey(`${assistantKey}-${kind}`), assistant_key: assistantKey, input_params: note ? { context: note } : {} } });
 
       try {
         for (const f of files) {
@@ -149,6 +156,16 @@ function AiInbox() {
       <Card className="shadow-card">
         <CardHeader><CardTitle className="text-base">{t("مهمة تحليل جديدة", "New analysis job")}</CardTitle></CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>{t("المساعد المختص", "Specialist assistant")}</Label>
+            <Select value={assistantKey} onValueChange={(v) => setAssistantKey(v as AiRoleAssistantKey)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {allowedAssistants.map(([key, assistant]) => <SelectItem key={key} value={key}>{t(assistant.ar, assistant.en)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{AI_ROLE_ASSISTANTS[assistantKey].focus}</p>
+          </div>
           <div className="space-y-2">
             <Label>{t("نوع التحليل", "Analysis kind")}</Label>
             <Select value={kind} onValueChange={(v) => setKind(v as AiJobKind)}>
