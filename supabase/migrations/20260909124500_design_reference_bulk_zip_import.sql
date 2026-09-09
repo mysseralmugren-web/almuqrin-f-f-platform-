@@ -89,6 +89,31 @@ with check (
 
 -- No DELETE policy: import history is part of the audit trail.
 
+create or replace function public.increment_design_reference_import_job(
+  p_job_id uuid,
+  p_imported integer,
+  p_duplicates integer,
+  p_failed integer
+)
+returns void
+language sql
+security invoker
+set search_path = ''
+as $$
+  update public.design_reference_import_jobs
+  set processed_items = processed_items + 1,
+      imported_items = imported_items + greatest(p_imported, 0),
+      duplicate_items = duplicate_items + greatest(p_duplicates, 0),
+      failed_items = failed_items + greatest(p_failed, 0),
+      status = 'importing',
+      updated_at = now()
+  where id = p_job_id
+    and company_id = public.current_company_id();
+$$;
+
+revoke all on function public.increment_design_reference_import_job(uuid, integer, integer, integer) from public;
+grant execute on function public.increment_design_reference_import_job(uuid, integer, integer, integer) to authenticated;
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'design-references-private',
