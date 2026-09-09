@@ -21,8 +21,8 @@ async function companyOf(c: Ctx): Promise<string> {
 async function requireEditor(c: Ctx) {
   const { data, error } = await c.supabase.from("user_roles").select("role").eq("user_id", c.userId);
   if (error) throw new Error(error.message);
-  const roles = (data ?? []).map((r: { role: string }) => r.role);
-  if (!roles.some((r) => EDITORS.includes(r as (typeof EDITORS)[number]))) throw new Error("FORBIDDEN_ROLE");
+  const roles: string[] = (data ?? []).map((row: { role: string }) => row.role);
+  if (!roles.some((role: string) => EDITORS.includes(role as (typeof EDITORS)[number]))) throw new Error("FORBIDDEN_ROLE");
 }
 
 async function ownedJob(c: Ctx, jobId: string) {
