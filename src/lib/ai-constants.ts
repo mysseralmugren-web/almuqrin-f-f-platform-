@@ -91,6 +91,10 @@ export function seatingCapacity(input: {
 }
 
 const ERRORS: Record<string, { ar: string; en: string }> = {
+  function_not_available: {
+    ar: "يجب تفعيل الدوال الآمنة في Supabase لاستكمال هذه العملية.",
+    en: "The required secure Supabase functions must be activated to complete this operation.",
+  },
   NO_COMPANY: { ar: "لا توجد منشأة مرتبطة بالمستخدم", en: "User has no company" },
   FORBIDDEN_ROLE: { ar: "لا تملك صلاحية لهذا الإجراء", en: "You are not allowed to do this" },
   FORBIDDEN_KIND: { ar: "لا تملك صلاحية لهذا النوع من التحليل", en: "You are not allowed to run this analysis kind" },
@@ -113,7 +117,10 @@ const ERRORS: Record<string, { ar: string; en: string }> = {
 };
 
 export function aiErrorText(code: string, ar: boolean) {
-  const key = Object.keys(ERRORS).find((k) => code.includes(k));
+  const normalized = code.toLowerCase();
+  const key = Object.keys(ERRORS).find((k) =>
+    k === "function_not_available" ? normalized.includes(k) : code.includes(k),
+  );
   if (key) return ar ? ERRORS[key]!.ar : ERRORS[key]!.en;
   return ar ? "حدث خطأ غير متوقع" : "Unexpected error";
 }
@@ -123,8 +130,6 @@ export function labelOf(map: Record<string, { ar: string; en: string }>, key: st
   const e = map[key];
   return e ? (ar ? e.ar : e.en) : key;
 }
-
-
 
 export const AI_ROLE_ASSISTANTS = {
   executive: { ar: "مساعد المالك والإدارة", en: "Executive assistant", roles: ["factory_owner", "general_manager", "super_admin"], focus: "لوحة مؤشرات الإدارة، المخاطر، القرارات والتوصيات التي لا تُنفذ تلقائيًا." },

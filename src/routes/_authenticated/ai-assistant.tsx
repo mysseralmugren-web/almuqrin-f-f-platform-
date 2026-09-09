@@ -12,6 +12,7 @@ import {
   ScanSearch,
   Cloud,
   Box,
+  Scale,
 } from "lucide-react";
 import { useT } from "@/lib/theme";
 
@@ -43,6 +44,13 @@ function AiLayout() {
 
   const tabs = [
     { to: "/ai-assistant", ar: "صندوق المهام", en: "Task inbox", icon: Inbox, exact: true },
+    {
+      to: "/ai-assistant/legal",
+      ar: "المحامي الذكي",
+      en: "Smart legal advisor",
+      icon: Scale,
+      exact: false,
+    },
     {
       to: "/ai-assistant/interior-twin",
       ar: "التوأم الرقمي للتصميم",
