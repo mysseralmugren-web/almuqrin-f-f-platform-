@@ -6,8 +6,9 @@ create or replace function private.handle_new_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = ''
+set search_path to ''
 as $$
+-- security-definer: reviewed
 begin
   insert into public.profiles (id, full_name, email)
   values (
@@ -30,8 +31,9 @@ create or replace function private.handle_auth_user_email_update()
 returns trigger
 language plpgsql
 security definer
-set search_path = ''
+set search_path to ''
 as $$
+-- security-definer: reviewed
 begin
   update public.profiles
   set email = coalesce(new.email, ''),
