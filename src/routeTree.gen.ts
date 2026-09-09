@@ -30,6 +30,7 @@ import { Route as AuthenticatedHrRouteImport } from './routes/_authenticated/hr'
 import { Route as AuthenticatedIntegrationsRouteImport } from './routes/_authenticated/integrations'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
 import { Route as AuthenticatedInvoicesRouteImport } from './routes/_authenticated/invoices'
+import { Route as AuthenticatedMarketingRouteImport } from './routes/_authenticated/marketing'
 import { Route as AuthenticatedMesRouteImport } from './routes/_authenticated/mes'
 import { Route as AuthenticatedPasskeysRouteImport } from './routes/_authenticated/passkeys'
 import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticated/projects'
@@ -68,6 +69,7 @@ import { Route as AuthenticatedAiAssistantDesignRouteImport } from './routes/_au
 import { Route as AuthenticatedAiAssistantFinanceRouteImport } from './routes/_authenticated/ai-assistant.finance'
 import { Route as AuthenticatedAiAssistantInteriorTwinRouteImport } from './routes/_authenticated/ai-assistant.interior-twin'
 import { Route as AuthenticatedAiAssistantInvoiceRouteImport } from './routes/_authenticated/ai-assistant.invoice'
+import { Route as AuthenticatedAiAssistantLegalRouteImport } from './routes/_authenticated/ai-assistant.legal'
 import { Route as AuthenticatedAiAssistantRenderRouteImport } from './routes/_authenticated/ai-assistant.render'
 import { Route as AuthenticatedAiAssistantSeatingRouteImport } from './routes/_authenticated/ai-assistant.seating'
 import { Route as AuthenticatedAiAssistantSettingsRouteImport } from './routes/_authenticated/ai-assistant.settings'
@@ -120,6 +122,8 @@ import { Route as AuthenticatedReportsManufacturingRouteImport } from './routes/
 import { Route as AuthenticatedReportsProjectsRouteImport } from './routes/_authenticated/reports.projects'
 import { Route as AuthenticatedReportsPurchasingRouteImport } from './routes/_authenticated/reports.purchasing'
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
+import { Route as ApiMarketingGenerateRouteImport } from './routes/api/marketing.generate'
+import { Route as ApiMarketingSyncRouteImport } from './routes/api/marketing.sync'
 import { Route as AuthenticatedPrintContractIdRouteImport } from './routes/_authenticated/print.contract.$id'
 import { Route as AuthenticatedPrintPayslipIdRouteImport } from './routes/_authenticated/print.payslip.$id'
 import { Route as AuthenticatedPrintQuotationIdRouteImport } from './routes/_authenticated/print.quotation.$id'
@@ -235,6 +239,11 @@ const AuthenticatedInventoryRoute = AuthenticatedInventoryRouteImport.update({
 const AuthenticatedInvoicesRoute = AuthenticatedInvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMarketingRoute = AuthenticatedMarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMesRoute = AuthenticatedMesRouteImport.update({
@@ -444,6 +453,12 @@ const AuthenticatedAiAssistantInvoiceRoute =
   AuthenticatedAiAssistantInvoiceRouteImport.update({
     id: '/invoice',
     path: '/invoice',
+    getParentRoute: () => AuthenticatedAiAssistantRoute,
+  } as any)
+const AuthenticatedAiAssistantLegalRoute =
+  AuthenticatedAiAssistantLegalRouteImport.update({
+    id: '/legal',
+    path: '/legal',
     getParentRoute: () => AuthenticatedAiAssistantRoute,
   } as any)
 const AuthenticatedAiAssistantRenderRoute =
@@ -746,6 +761,16 @@ const AuthenticatedReportsSalesRoute =
     path: '/sales',
     getParentRoute: () => AuthenticatedReportsRoute,
   } as any)
+const ApiMarketingGenerateRoute = ApiMarketingGenerateRouteImport.update({
+  id: '/api/marketing/generate',
+  path: '/api/marketing/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMarketingSyncRoute = ApiMarketingSyncRouteImport.update({
+  id: '/api/marketing/sync',
+  path: '/api/marketing/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedPrintContractIdRoute =
   AuthenticatedPrintContractIdRouteImport.update({
     id: '/print/contract/$id',
@@ -814,6 +839,7 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof AuthenticatedIntegrationsRouteWithChildren
   '/inventory': typeof AuthenticatedInventoryRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
+  '/marketing': typeof AuthenticatedMarketingRoute
   '/mes': typeof AuthenticatedMesRouteWithChildren
   '/passkeys': typeof AuthenticatedPasskeysRoute
   '/projects': typeof AuthenticatedProjectsRouteWithChildren
@@ -849,6 +875,7 @@ export interface FileRoutesByFullPath {
   '/ai-assistant/finance': typeof AuthenticatedAiAssistantFinanceRoute
   '/ai-assistant/interior-twin': typeof AuthenticatedAiAssistantInteriorTwinRoute
   '/ai-assistant/invoice': typeof AuthenticatedAiAssistantInvoiceRoute
+  '/ai-assistant/legal': typeof AuthenticatedAiAssistantLegalRoute
   '/ai-assistant/render': typeof AuthenticatedAiAssistantRenderRoute
   '/ai-assistant/seating': typeof AuthenticatedAiAssistantSeatingRoute
   '/ai-assistant/settings': typeof AuthenticatedAiAssistantSettingsRoute
@@ -893,6 +920,8 @@ export interface FileRoutesByFullPath {
   '/reports/projects': typeof AuthenticatedReportsProjectsRoute
   '/reports/purchasing': typeof AuthenticatedReportsPurchasingRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
+  '/api/marketing/generate': typeof ApiMarketingGenerateRoute
+  '/api/marketing/sync': typeof ApiMarketingSyncRoute
   '/accounting/': typeof AuthenticatedAccountingIndexRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/ai-assistant/': typeof AuthenticatedAiAssistantIndexRoute
@@ -926,6 +955,7 @@ export interface FileRoutesByTo {
   '/files': typeof AuthenticatedFilesRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/invoices': typeof AuthenticatedInvoicesRoute
+  '/marketing': typeof AuthenticatedMarketingRoute
   '/passkeys': typeof AuthenticatedPasskeysRoute
   '/quotations': typeof AuthenticatedQuotationsRoute
   '/sales': typeof AuthenticatedSalesRoute
@@ -957,6 +987,7 @@ export interface FileRoutesByTo {
   '/ai-assistant/finance': typeof AuthenticatedAiAssistantFinanceRoute
   '/ai-assistant/interior-twin': typeof AuthenticatedAiAssistantInteriorTwinRoute
   '/ai-assistant/invoice': typeof AuthenticatedAiAssistantInvoiceRoute
+  '/ai-assistant/legal': typeof AuthenticatedAiAssistantLegalRoute
   '/ai-assistant/render': typeof AuthenticatedAiAssistantRenderRoute
   '/ai-assistant/seating': typeof AuthenticatedAiAssistantSeatingRoute
   '/ai-assistant/settings': typeof AuthenticatedAiAssistantSettingsRoute
@@ -1001,6 +1032,8 @@ export interface FileRoutesByTo {
   '/reports/projects': typeof AuthenticatedReportsProjectsRoute
   '/reports/purchasing': typeof AuthenticatedReportsPurchasingRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
+  '/api/marketing/generate': typeof ApiMarketingGenerateRoute
+  '/api/marketing/sync': typeof ApiMarketingSyncRoute
   '/accounting': typeof AuthenticatedAccountingIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/ai-assistant': typeof AuthenticatedAiAssistantIndexRoute
@@ -1044,6 +1077,7 @@ export interface FileRoutesById {
   '/_authenticated/integrations': typeof AuthenticatedIntegrationsRouteWithChildren
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
   '/_authenticated/invoices': typeof AuthenticatedInvoicesRoute
+  '/_authenticated/marketing': typeof AuthenticatedMarketingRoute
   '/_authenticated/mes': typeof AuthenticatedMesRouteWithChildren
   '/_authenticated/passkeys': typeof AuthenticatedPasskeysRoute
   '/_authenticated/projects': typeof AuthenticatedProjectsRouteWithChildren
@@ -1079,6 +1113,7 @@ export interface FileRoutesById {
   '/_authenticated/ai-assistant/finance': typeof AuthenticatedAiAssistantFinanceRoute
   '/_authenticated/ai-assistant/interior-twin': typeof AuthenticatedAiAssistantInteriorTwinRoute
   '/_authenticated/ai-assistant/invoice': typeof AuthenticatedAiAssistantInvoiceRoute
+  '/_authenticated/ai-assistant/legal': typeof AuthenticatedAiAssistantLegalRoute
   '/_authenticated/ai-assistant/render': typeof AuthenticatedAiAssistantRenderRoute
   '/_authenticated/ai-assistant/seating': typeof AuthenticatedAiAssistantSeatingRoute
   '/_authenticated/ai-assistant/settings': typeof AuthenticatedAiAssistantSettingsRoute
@@ -1123,6 +1158,8 @@ export interface FileRoutesById {
   '/_authenticated/reports/projects': typeof AuthenticatedReportsProjectsRoute
   '/_authenticated/reports/purchasing': typeof AuthenticatedReportsPurchasingRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
+  '/api/marketing/generate': typeof ApiMarketingGenerateRoute
+  '/api/marketing/sync': typeof ApiMarketingSyncRoute
   '/_authenticated/accounting/': typeof AuthenticatedAccountingIndexRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/ai-assistant/': typeof AuthenticatedAiAssistantIndexRoute
@@ -1166,6 +1203,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/inventory'
     | '/invoices'
+    | '/marketing'
     | '/mes'
     | '/passkeys'
     | '/projects'
@@ -1201,6 +1239,7 @@ export interface FileRouteTypes {
     | '/ai-assistant/finance'
     | '/ai-assistant/interior-twin'
     | '/ai-assistant/invoice'
+    | '/ai-assistant/legal'
     | '/ai-assistant/render'
     | '/ai-assistant/seating'
     | '/ai-assistant/settings'
@@ -1245,6 +1284,8 @@ export interface FileRouteTypes {
     | '/reports/projects'
     | '/reports/purchasing'
     | '/reports/sales'
+    | '/api/marketing/generate'
+    | '/api/marketing/sync'
     | '/accounting/'
     | '/admin/'
     | '/ai-assistant/'
@@ -1278,6 +1319,7 @@ export interface FileRouteTypes {
     | '/files'
     | '/inventory'
     | '/invoices'
+    | '/marketing'
     | '/passkeys'
     | '/quotations'
     | '/sales'
@@ -1309,6 +1351,7 @@ export interface FileRouteTypes {
     | '/ai-assistant/finance'
     | '/ai-assistant/interior-twin'
     | '/ai-assistant/invoice'
+    | '/ai-assistant/legal'
     | '/ai-assistant/render'
     | '/ai-assistant/seating'
     | '/ai-assistant/settings'
@@ -1353,6 +1396,8 @@ export interface FileRouteTypes {
     | '/reports/projects'
     | '/reports/purchasing'
     | '/reports/sales'
+    | '/api/marketing/generate'
+    | '/api/marketing/sync'
     | '/accounting'
     | '/admin'
     | '/ai-assistant'
@@ -1395,6 +1440,7 @@ export interface FileRouteTypes {
     | '/_authenticated/integrations'
     | '/_authenticated/inventory'
     | '/_authenticated/invoices'
+    | '/_authenticated/marketing'
     | '/_authenticated/mes'
     | '/_authenticated/passkeys'
     | '/_authenticated/projects'
@@ -1430,6 +1476,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ai-assistant/finance'
     | '/_authenticated/ai-assistant/interior-twin'
     | '/_authenticated/ai-assistant/invoice'
+    | '/_authenticated/ai-assistant/legal'
     | '/_authenticated/ai-assistant/render'
     | '/_authenticated/ai-assistant/seating'
     | '/_authenticated/ai-assistant/settings'
@@ -1474,6 +1521,8 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/projects'
     | '/_authenticated/reports/purchasing'
     | '/_authenticated/reports/sales'
+    | '/api/marketing/generate'
+    | '/api/marketing/sync'
     | '/_authenticated/accounting/'
     | '/_authenticated/admin/'
     | '/_authenticated/ai-assistant/'
@@ -1504,6 +1553,8 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthConfirmRoute: typeof AuthConfirmRoute
   VerifyDocumentRoute: typeof VerifyDocumentRoute
+  ApiMarketingGenerateRoute: typeof ApiMarketingGenerateRoute
+  ApiMarketingSyncRoute: typeof ApiMarketingSyncRoute
   ApiPublicDocumentVerifyRoute: typeof ApiPublicDocumentVerifyRoute
   ApiPublicWebsiteSubmitRoute: typeof ApiPublicWebsiteSubmitRoute
   ApiPublicWhatsappWebhookRoute: typeof ApiPublicWhatsappWebhookRoute
@@ -1656,6 +1707,13 @@ declare module '@tanstack/react-router' {
       path: '/invoices'
       fullPath: '/invoices'
       preLoaderRoute: typeof AuthenticatedInvoicesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/marketing': {
+      id: '/_authenticated/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof AuthenticatedMarketingRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/mes': {
@@ -1922,6 +1980,13 @@ declare module '@tanstack/react-router' {
       path: '/invoice'
       fullPath: '/ai-assistant/invoice'
       preLoaderRoute: typeof AuthenticatedAiAssistantInvoiceRouteImport
+      parentRoute: typeof AuthenticatedAiAssistantRoute
+    }
+    '/_authenticated/ai-assistant/legal': {
+      id: '/_authenticated/ai-assistant/legal'
+      path: '/legal'
+      fullPath: '/ai-assistant/legal'
+      preLoaderRoute: typeof AuthenticatedAiAssistantLegalRouteImport
       parentRoute: typeof AuthenticatedAiAssistantRoute
     }
     '/_authenticated/ai-assistant/render': {
@@ -2288,6 +2353,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsSalesRouteImport
       parentRoute: typeof AuthenticatedReportsRoute
     }
+    '/api/marketing/generate': {
+      id: '/api/marketing/generate'
+      path: '/api/marketing/generate'
+      fullPath: '/api/marketing/generate'
+      preLoaderRoute: typeof ApiMarketingGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/marketing/sync': {
+      id: '/api/marketing/sync'
+      path: '/api/marketing/sync'
+      fullPath: '/api/marketing/sync'
+      preLoaderRoute: typeof ApiMarketingSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/print/contract/$id': {
       id: '/_authenticated/print/contract/$id'
       path: '/print/contract/$id'
@@ -2405,6 +2484,7 @@ interface AuthenticatedAiAssistantRouteChildren {
   AuthenticatedAiAssistantFinanceRoute: typeof AuthenticatedAiAssistantFinanceRoute
   AuthenticatedAiAssistantInteriorTwinRoute: typeof AuthenticatedAiAssistantInteriorTwinRoute
   AuthenticatedAiAssistantInvoiceRoute: typeof AuthenticatedAiAssistantInvoiceRoute
+  AuthenticatedAiAssistantLegalRoute: typeof AuthenticatedAiAssistantLegalRoute
   AuthenticatedAiAssistantRenderRoute: typeof AuthenticatedAiAssistantRenderRoute
   AuthenticatedAiAssistantSeatingRoute: typeof AuthenticatedAiAssistantSeatingRoute
   AuthenticatedAiAssistantSettingsRoute: typeof AuthenticatedAiAssistantSettingsRoute
@@ -2422,6 +2502,7 @@ const AuthenticatedAiAssistantRouteChildren: AuthenticatedAiAssistantRouteChildr
     AuthenticatedAiAssistantInteriorTwinRoute:
       AuthenticatedAiAssistantInteriorTwinRoute,
     AuthenticatedAiAssistantInvoiceRoute: AuthenticatedAiAssistantInvoiceRoute,
+    AuthenticatedAiAssistantLegalRoute: AuthenticatedAiAssistantLegalRoute,
     AuthenticatedAiAssistantRenderRoute: AuthenticatedAiAssistantRenderRoute,
     AuthenticatedAiAssistantSeatingRoute: AuthenticatedAiAssistantSeatingRoute,
     AuthenticatedAiAssistantSettingsRoute:
@@ -2636,6 +2717,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIntegrationsRoute: typeof AuthenticatedIntegrationsRouteWithChildren
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
   AuthenticatedInvoicesRoute: typeof AuthenticatedInvoicesRoute
+  AuthenticatedMarketingRoute: typeof AuthenticatedMarketingRoute
   AuthenticatedMesRoute: typeof AuthenticatedMesRouteWithChildren
   AuthenticatedPasskeysRoute: typeof AuthenticatedPasskeysRoute
   AuthenticatedProjectsRoute: typeof AuthenticatedProjectsRouteWithChildren
@@ -2671,6 +2753,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIntegrationsRoute: AuthenticatedIntegrationsRouteWithChildren,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
   AuthenticatedInvoicesRoute: AuthenticatedInvoicesRoute,
+  AuthenticatedMarketingRoute: AuthenticatedMarketingRoute,
   AuthenticatedMesRoute: AuthenticatedMesRouteWithChildren,
   AuthenticatedPasskeysRoute: AuthenticatedPasskeysRoute,
   AuthenticatedProjectsRoute: AuthenticatedProjectsRouteWithChildren,
@@ -2714,6 +2797,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthConfirmRoute: AuthConfirmRoute,
   VerifyDocumentRoute: VerifyDocumentRoute,
+  ApiMarketingGenerateRoute: ApiMarketingGenerateRoute,
+  ApiMarketingSyncRoute: ApiMarketingSyncRoute,
   ApiPublicDocumentVerifyRoute: ApiPublicDocumentVerifyRoute,
   ApiPublicWebsiteSubmitRoute: ApiPublicWebsiteSubmitRoute,
   ApiPublicWhatsappWebhookRoute: ApiPublicWhatsappWebhookRoute,

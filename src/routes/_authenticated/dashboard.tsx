@@ -281,10 +281,11 @@ function DashboardPage() {
     if (permissionsLoading) return [];
 
     const userRoles: readonly string[] = user?.roles ?? [];
+    const userRoleSet = new Set<string>(userRoles);
     const isOwner = userRoles.some((role) => OWNER_ROLES.has(role));
 
     return ROLE_APP_SPECS
-      .filter((app) => isOwner || app.roles.some((role) => userRoles.includes(role)))
+      .filter((app) => isOwner || app.roles.some((role) => userRoleSet.has(role)))
       .map((app) => ({
         ...app,
         shortcuts: app.moduleKeys.flatMap((moduleKey) => {
