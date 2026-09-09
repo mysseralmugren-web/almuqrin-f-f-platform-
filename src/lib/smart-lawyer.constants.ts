@@ -1,7 +1,7 @@
 export const SMART_LAWYER_DEFAULT_POLICY = {
   maxCreditDays: 60,
   minAdvancePercent: 30,
-  defaultWarrantyMonths: 12,
+  defaultWarrantyMonths: 60,
   extraReviewValue: 500_000,
   mandatoryClauses: [
     'التسليم والاستلام',
