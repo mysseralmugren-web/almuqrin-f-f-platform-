@@ -13,6 +13,7 @@ import {
   Cloud,
   Box,
   Scale,
+  BookOpen,
 } from "lucide-react";
 import { useT } from "@/lib/theme";
 
@@ -85,6 +86,13 @@ function AiLayout() {
       ar: "تصميم ديزاين",
       en: "Design skill",
       icon: Palette,
+      exact: false,
+    },
+    {
+      to: "/ai-assistant/references",
+      ar: "مكتبة مراجع التصميم",
+      en: "Design references",
+      icon: BookOpen,
       exact: false,
     },
     {
