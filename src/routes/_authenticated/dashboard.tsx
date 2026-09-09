@@ -280,7 +280,7 @@ function DashboardPage() {
   const roleApps = useMemo(() => {
     if (permissionsLoading) return [];
 
-    const userRoles = user?.roles ?? [];
+    const userRoles: readonly string[] = user?.roles ?? [];
     const isOwner = userRoles.some((role) => OWNER_ROLES.has(role));
 
     return ROLE_APP_SPECS
