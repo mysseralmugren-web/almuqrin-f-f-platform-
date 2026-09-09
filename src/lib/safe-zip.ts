@@ -14,7 +14,7 @@ export type SafeZipEntry = {
 
 export type SafeZipArchive = {
   entries: SafeZipEntry[];
-  extract(entry: SafeZipEntry): Promise<Uint8Array>;
+  extract(entry: SafeZipEntry): Promise<Uint8Array<ArrayBuffer>>;
 };
 
 const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -44,9 +44,16 @@ function crc32(bytes: Uint8Array) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
-async function inflateRaw(bytes: Uint8Array) {
+function arrayBufferBacked(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy;
+}
+
+async function inflateRaw(bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
   if (typeof DecompressionStream === "undefined") throw new Error("ZIP_DECOMPRESSION_UNSUPPORTED");
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw" as CompressionFormat));
+  const input = arrayBufferBacked(bytes);
+  const stream = new Blob([input]).stream().pipeThrough(new DecompressionStream("deflate-raw" as CompressionFormat));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -104,7 +111,7 @@ export function openSafeZip(buffer: ArrayBuffer, limits?: { maxEntries?: number;
       const start = o + 30 + nameLen + extraLen;
       const end = start + entry.compressedSize;
       if (end > bytes.length) throw new Error(`ZIP_COMPRESSED_DATA_INVALID:${entry.name}`);
-      const packed = bytes.slice(start, end);
+      const packed = arrayBufferBacked(bytes.slice(start, end));
       const out = entry.method === 0 ? packed : await inflateRaw(packed);
       if (out.byteLength !== entry.uncompressedSize) throw new Error(`ZIP_SIZE_MISMATCH:${entry.name}`);
       if (crc32(out) !== entry.crc32) throw new Error(`ZIP_CRC_MISMATCH:${entry.name}`);
