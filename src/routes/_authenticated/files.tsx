@@ -14,7 +14,7 @@ import { useT } from "@/lib/theme";
 
 export const Route=createFileRoute("/_authenticated/files")({component:FilesCenter,head:()=>({meta:[{title:"الملفات والصور · منصة المقرن"}]})});
 type Category="plans"|"contracts"|"invoices"|"site_photos"|"designs"|"other";
-type UploadItem={id:string;file:File;progress:number;status:"ready"|"processing"|"uploading"|"done"|"error";error?:string};
+type UploadItem={id:string;file:File;progress:number;status:"ready"|"processing"|"uploading"|"done"|"error";error?:string;stage?:string};
 const categories:{value:Category;ar:string;en:string}[]=[{value:"plans",ar:"مخططات",en:"Plans"},{value:"contracts",ar:"عقود",en:"Contracts"},{value:"invoices",ar:"فواتير",en:"Invoices"},{value:"site_photos",ar:"صور الموقع",en:"Site photos"},{value:"designs",ar:"تصاميم",en:"Designs"},{value:"other",ar:"أخرى",en:"Other"}];
 const isCatalogPdf=(file:File)=>file.type==="application/pdf"||/\.pdf$/i.test(file.name);
 const maxFor=(file:File)=>isCatalogPdf(file)?CATALOG_PDF_MAX_BYTES:DEFAULT_ATTACHMENT_MAX_BYTES;
@@ -53,7 +53,7 @@ async function uploadResumable(path:string,token:string,signedUrl:string,file:Fi
  const host=signed.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co");
  const endpoint=`${signed.protocol}//${host}/storage/v1/upload/resumable`;
  const {data:{session}}=await supabase.auth.getSession();
- const auth=session?.access_token?{authorization:`Bearer ${session.access_token}`} : {};
+ const auth:Record<string,string>=session?.access_token?{authorization:`Bearer ${session.access_token}`} : {};
  const creation=await fetch(endpoint,{method:"POST",headers:{"tus-resumable":"1.0.0","upload-length":String(file.size),"upload-metadata":[`bucketName ${encodeMetadata(BUCKET)}`,`objectName ${encodeMetadata(path)}`,`contentType ${encodeMetadata(file.type||"application/octet-stream")}`].join(","),"x-signature":token,...auth}});
  if(!creation.ok)throw new Error(`RESUMABLE_UPLOAD_CREATE_FAILED: ${creation.status} ${await creation.text()}`);
  const location=creation.headers.get("location");
