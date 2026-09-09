@@ -80,7 +80,9 @@ function extensionInfo(name: string) {
 }
 
 async function hashSha256(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest("SHA-256", bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  const source = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(source).set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", source);
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
