@@ -21,6 +21,7 @@ try {
   const csv = await vite.ssrLoadModule("/src/lib/csv.ts");
   const auth = await vite.ssrLoadModule("/src/lib/auth-identifier.ts");
   const webhook = await vite.ssrLoadModule("/src/lib/integrations.server.ts");
+  const smartLawyer = await vite.ssrLoadModule("/src/lib/smart-lawyer.constants.ts");
 
   check("CSV formulas are neutralized after optional whitespace", () => {
     for (const value of ["=1+1", "+SUM(A1:A2)", "-10+20", "@cmd", "  =HYPERLINK(\"x\")", "\t@x"])
@@ -47,6 +48,36 @@ try {
     assert.deepEqual(auth.parseManagerContactIdentifier(" Manager@Example.com "), { kind: "email", value: "manager@example.com" });
     assert.deepEqual(auth.parseManagerContactIdentifier("0551234567"), { kind: "phone", value: "+966551234567" });
     assert.throws(() => auth.parseManagerContactIdentifier("almuqrin_admin"), /INVALID_EMAIL_OR_PHONE/);
+  });
+
+  check("smart lawyer uses a five-year product warranty by default", () => {
+    assert.equal(smartLawyer.SMART_LAWYER_DEFAULT_POLICY.defaultWarrantyMonths, 60);
+  });
+
+  check("smart lawyer blocks credit release above the approved exposure limit", () => {
+    const result = smartLawyer.evaluateCreditRelease({
+      orderValue: 70_000,
+      outstanding: 40_000,
+      creditLimit: 100_000,
+      guaranteesOk: true,
+      overdueBlock: false,
+    });
+    assert.equal(result.status, "blocked");
+    assert.equal(result.totalExposure, 110_000);
+  });
+
+  check("smart lawyer flags payment terms above the 60-day credit policy", () => {
+    const result = smartLawyer.evaluateSmartLawyerText("يتم السداد بعد 90 يوم من تاريخ التسليم مع ضمان لمدة خمس سنوات.");
+    assert.equal(result.findings.some((finding) => finding.type === "policy_conflict"), true);
+    assert.equal(result.riskScore > 0, true);
+  });
+
+  check("smart lawyer accepts a complete low-risk contract sample without extra approval", () => {
+    const result = smartLawyer.evaluateSmartLawyerText(
+      "شروط الدفع: دفعة مقدمة. التسليم والاستلام بمحضر. الضمان خمس سنوات. القوة القاهرة. حل النزاعات والاختصاص في الرياض. التوقيع من مخول بموجب تفويض.",
+    );
+    assert.equal(result.riskLevel, "low");
+    assert.deepEqual(result.requiredApprovals, []);
   });
 
   const base = {
