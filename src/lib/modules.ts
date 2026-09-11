@@ -23,12 +23,14 @@ import {
   Palette,
   ScanSearch,
   Megaphone,
+  Cuboid,
   type LucideIcon,
 } from "lucide-react";
 import type { Role } from "./auth";
 
 export interface ModuleDef {
   key: string;
+  permissionKey?: string;
   path: string;
   labelAr: string;
   labelEn: string;
@@ -59,6 +61,7 @@ export const MODULES: ModuleDef[] = [
   { key: "accounting", path: "/accounting", labelAr: "المحاسبة", labelEn: "Accounting", icon: Calculator, group: "finance" },
   { key: "hr", path: "/hr", labelAr: "الموارد البشرية", labelEn: "Human Resources", icon: UserCog, group: "finance" },
   { key: "ai-assistant", path: "/ai-assistant", labelAr: "المساعد الذكي", labelEn: "AI Assistant", icon: Sparkles, group: "system" },
+  { key: "design-studio", permissionKey: "ai-assistant", path: "/design-studio", labelAr: "استوديو التصميم 3D", labelEn: "3D Design Studio", icon: Cuboid, group: "system" },
   { key: "documents", path: "/documents", labelAr: "مركز المستندات والهوية", labelEn: "Documents & Identity", icon: FileStack, group: "system" },
   { key: "branding", path: "/branding", labelAr: "هوية المصنع", labelEn: "Factory Branding", icon: Palette, group: "system" },
   { key: "files", path: "/files", labelAr: "الملفات والصور", labelEn: "Files & Images", icon: FolderOpen, group: "system" },
@@ -73,7 +76,7 @@ export function moduleKeyForPath(pathname: string): string | null {
   if (pathname.startsWith("/delivery-notes")) return "delivery";
   if (/^\/documents\/[0-9a-f-]{36}$/i.test(pathname)) return "documents";
   const matches = MODULES.filter((m) => pathname === m.path || pathname.startsWith(`${m.path}/`)).sort((a,b)=>b.path.length-a.path.length);
-  return matches[0]?.key ?? null;
+  return matches[0] ? (matches[0].permissionKey ?? matches[0].key) : null;
 }
 
 export const GROUP_LABELS: Record<ModuleDef["group"], { ar: string; en: string }> = {
