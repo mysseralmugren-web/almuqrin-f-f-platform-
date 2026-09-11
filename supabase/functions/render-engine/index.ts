@@ -26,9 +26,7 @@ function hex(bytes: ArrayBuffer) {
 }
 
 async function sha256(value: unknown) {
-  return hex(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value))),
-  );
+  return hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value))));
 }
 
 async function hmac(message: string) {
@@ -46,8 +44,7 @@ async function hmac(message: string) {
 }
 
 function safeWorkerUrl(path = "/render") {
-  if (!WORKER_URL)
-    throw Object.assign(new Error("Blender render worker is not configured"), { status: 503 });
+  if (!WORKER_URL) throw Object.assign(new Error("Blender render worker is not configured"), { status: 503 });
   const base = new URL(WORKER_URL);
   if (base.protocol !== "https:" || base.username || base.password) {
     throw Object.assign(new Error("Blender render worker must use HTTPS"), { status: 503 });
@@ -67,8 +64,7 @@ function qualityDefaults(quality: string) {
 
 async function readJson(req: Request) {
   const declared = Number(req.headers.get("content-length") ?? 0);
-  if (declared > MAX_BODY_BYTES)
-    throw Object.assign(new Error("Request body is too large"), { status: 413 });
+  if (declared > MAX_BODY_BYTES) throw Object.assign(new Error("Request body is too large"), { status: 413 });
   const text = await req.text();
   if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) {
     throw Object.assign(new Error("Request body is too large"), { status: 413 });
@@ -81,11 +77,7 @@ async function readJson(req: Request) {
 }
 
 async function getProfile(client: ReturnType<typeof createClient>, userId: string) {
-  const { data, error } = await client
-    .from("profiles")
-    .select("company_id,is_active")
-    .eq("id", userId)
-    .single();
+  const { data, error } = await client.from("profiles").select("company_id,is_active").eq("id", userId).single();
   if (error || !data?.company_id || !data.is_active) {
     throw Object.assign(new Error("Active company profile required"), { status: 403 });
   }
@@ -131,14 +123,9 @@ Deno.serve(async (req) => {
   try {
     const authorization = req.headers.get("Authorization");
     if (!authorization) return json({ error: "Unauthorized" }, 401);
-    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authorization } },
-    });
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: authorization } } });
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const {
-      data: { user },
-      error: authError,
-    } = await client.auth.getUser();
+    const { data: { user }, error: authError } = await client.auth.getUser();
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
     const profile = await getProfile(client, user.id);
     const body = await readJson(req);
@@ -146,7 +133,7 @@ Deno.serve(async (req) => {
 
     if (action === "capabilities") {
       return json({
-        version: "9.0.0",
+        version: "9.1.0",
         engine: "AlMuqrin Blender Render Engine",
         backends: ["blender"],
         workerConfigured: Boolean(WORKER_URL && WORKER_KEY && CALLBACK_SECRET),
@@ -156,58 +143,43 @@ Deno.serve(async (req) => {
           high: qualityDefaults("high"),
           ultra: qualityDefaults("ultra"),
         },
-        outputs: ["png", "jpeg", "webp"],
+        outputs: ["png", "jpeg", "webp", "glb"],
       });
     }
+
     if (action === "health") {
-      if (!WORKER_URL || !WORKER_KEY || !CALLBACK_SECRET)
-        return json({
-          connected: false,
-          configured: false,
-          reason: "Render worker settings are incomplete",
-        });
+      if (!WORKER_URL || !WORKER_KEY || !CALLBACK_SECRET) {
+        return json({ connected: false, configured: false, reason: "Render worker settings are incomplete" });
+      }
       safeWorkerUrl();
-      return json({
-        connected: true,
-        configured: true,
-        provider: "blender-worker",
-        checkedAt: new Date().toISOString(),
-      });
+      return json({ connected: true, configured: true, provider: "blender-worker", checkedAt: new Date().toISOString() });
     }
+
     if (action === "submit") {
-      const sceneSpec =
-        body.sceneSpec && typeof body.sceneSpec === "object" ? body.sceneSpec : null;
+      const sceneSpec = body.sceneSpec && typeof body.sceneSpec === "object" ? body.sceneSpec : null;
       if (!sceneSpec) return json({ error: "sceneSpec is required" }, 400);
-      if (JSON.stringify(sceneSpec).length > 100_000)
-        return json({ error: "sceneSpec is too large" }, 413);
-      const quality = ["draft", "high", "ultra"].includes(String(body.quality))
-        ? String(body.quality)
-        : "draft";
-      const outputFormat = ["png", "jpeg", "webp"].includes(String(body.outputFormat))
-        ? String(body.outputFormat)
-        : "png";
-      const preset = ["studio_three_point", "softbox_product"].includes(String(body.preset))
-        ? String(body.preset)
-        : "studio_three_point";
+      if (JSON.stringify(sceneSpec).length > 100_000) return json({ error: "sceneSpec is too large" }, 413);
+
+      const quality = ["draft", "high", "ultra"].includes(String(body.quality)) ? String(body.quality) : "draft";
+      const outputFormat = ["png", "jpeg", "webp", "glb"].includes(String(body.outputFormat)) ? String(body.outputFormat) : "png";
+      const preset = ["studio_three_point", "softbox_product"].includes(String(body.preset)) ? String(body.preset) : "studio_three_point";
       const subjectSizeM = Number(body.subjectSizeM ?? 1);
-      if (!Number.isFinite(subjectSizeM) || subjectSizeM < 0.1 || subjectSizeM > 20)
+      if (!Number.isFinite(subjectSizeM) || subjectSizeM < 0.1 || subjectSizeM > 20) {
         return json({ error: "subjectSizeM must be between 0.1 and 20" }, 400);
+      }
       const idempotencyKey = String(body.idempotencyKey ?? "").slice(0, 120);
-      if (!/^[A-Za-z0-9:_-]{8,120}$/.test(idempotencyKey))
-        return json({ error: "Valid idempotencyKey required" }, 400);
+      if (!/^[A-Za-z0-9:_-]{8,120}$/.test(idempotencyKey)) return json({ error: "Valid idempotencyKey required" }, 400);
+
       const { data: existing } = await admin
         .from("interior_render_jobs")
         .select("*")
         .eq("company_id", profile.company_id)
         .eq("idempotency_key", idempotencyKey)
         .maybeSingle();
-      if (existing) return json({ version: "9.0.0", job: existing, duplicate: true });
+      if (existing) return json({ version: "9.1.0", job: existing, duplicate: true });
 
       const jobId = crypto.randomUUID();
-      const projectId =
-        typeof body.projectId === "string" && /^[0-9a-f-]{36}$/i.test(body.projectId)
-          ? body.projectId
-          : null;
+      const projectId = typeof body.projectId === "string" && /^[0-9a-f-]{36}$/i.test(body.projectId) ? body.projectId : null;
       const extension = outputFormat === "jpeg" ? "jpg" : outputFormat;
       const outputPath = `${profile.company_id}/${projectId ?? "unassigned"}/${jobId}.${extension}`;
       const expiresAt = Math.floor(Date.now() / 1000) + 7200;
@@ -223,6 +195,7 @@ Deno.serve(async (req) => {
         outputFormat,
       };
       const requestFingerprint = await sha256({ sceneSpec, renderSettings });
+
       const { data: inserted, error: insertError } = await admin
         .from("interior_render_jobs")
         .insert({
@@ -248,51 +221,36 @@ Deno.serve(async (req) => {
 
       const worker = await submitWorker({ jobId, sceneSpec, renderSettings, callbackUrl });
       if (!worker.ok) {
-        await admin
-          .from("interior_render_jobs")
-          .update({
-            status: "failed",
-            error_message: `worker_submit_${worker.status}`,
-            completed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", jobId);
+        await admin.from("interior_render_jobs").update({
+          status: "failed",
+          error_message: `worker_submit_${worker.status}`,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", jobId);
         return json({ error: "Render worker rejected the job" }, 502);
       }
-      const { data: updated, error: updateError } = await admin
-        .from("interior_render_jobs")
-        .update({
-          status: "submitted",
-          worker_job_id: String(worker.data.jobId ?? jobId),
-          started_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", jobId)
-        .select("*")
-        .single();
+
+      const { data: updated, error: updateError } = await admin.from("interior_render_jobs").update({
+        status: "submitted",
+        worker_job_id: String(worker.data.jobId ?? jobId),
+        started_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("id", jobId).select("*").single();
       if (updateError) throw updateError;
-      return json({ version: "9.0.0", job: updated ?? inserted }, 202);
+      return json({ version: "9.1.0", job: updated ?? inserted }, 202);
     }
 
     const jobId = String(body.jobId ?? "");
     if (!/^[0-9a-f-]{36}$/i.test(jobId)) return json({ error: "Valid jobId is required" }, 400);
-    const { data: job, error: jobError } = await client
-      .from("interior_render_jobs")
-      .select("*")
-      .eq("id", jobId)
-      .single();
+    const { data: job, error: jobError } = await client.from("interior_render_jobs").select("*").eq("id", jobId).single();
     if (jobError || !job) return json({ error: "Render job not found or inaccessible" }, 404);
-    if (action === "status") return json({ version: "9.0.0", job });
+    if (action === "status") return json({ version: "9.1.0", job });
     if (action === "result") {
-      if (job.status !== "succeeded" || !job.output_path)
-        return json({ error: "Render result is not ready", status: job.status }, 409);
-      const { data, error } = await admin.storage
-        .from(job.output_bucket)
-        .createSignedUrl(job.output_path, 900);
-      if (error || !data?.signedUrl)
-        throw Object.assign(new Error("Unable to sign render output"), { status: 500 });
+      if (job.status !== "succeeded" || !job.output_path) return json({ error: "Render result is not ready", status: job.status }, 409);
+      const { data, error } = await admin.storage.from(job.output_bucket).createSignedUrl(job.output_path, 900);
+      if (error || !data?.signedUrl) throw Object.assign(new Error("Unable to sign render output"), { status: 500 });
       return json({
-        version: "9.0.0",
+        version: "9.1.0",
         job,
         contentType: job.output_content_type,
         sizeBytes: job.output_size_bytes,
@@ -302,20 +260,9 @@ Deno.serve(async (req) => {
     return json({ error: "Unsupported action" }, 400);
   } catch (error) {
     const status = Number((error as { status?: number })?.status ?? 500);
-    console.error("render-engine", {
-      status,
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return json(
-      {
-        error:
-          status >= 500
-            ? "Render orchestration failed"
-            : error instanceof Error
-              ? error.message
-              : "Request failed",
-      },
-      status >= 400 && status < 600 ? status : 500,
-    );
+    console.error("render-engine", { status, message: error instanceof Error ? error.message : "Unknown error" });
+    return json({
+      error: status >= 500 ? "Render orchestration failed" : error instanceof Error ? error.message : "Request failed",
+    }, status >= 400 && status < 600 ? status : 500);
   }
 });
