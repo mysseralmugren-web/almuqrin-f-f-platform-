@@ -18,7 +18,7 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const grouped = MODULES.reduce<Record<string, ModuleDef[]>>((acc, m) => {
-    if (!can(m.key, "view")) return acc;
+    if (!can(m.permissionKey ?? m.key, "view")) return acc;
     (acc[m.group] ||= []).push(m);
     return acc;
   }, {});
