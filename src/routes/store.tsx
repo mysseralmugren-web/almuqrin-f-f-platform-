@@ -12,13 +12,13 @@ const nav = [
 ];
 
 function StoreLayout() {
-  return <div dir="rtl" className="min-h-screen bg-[#090b0e] text-white">
-    <div className="border-b border-white/10 bg-[#0e1115] px-4 py-2 text-center text-[11px] text-white/55">تصنيع سعودي حسب الطلب • تصميم، تصنيع وتنفيذ داخل المملكة</div>
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#090b0e]/90 backdrop-blur-xl">
+  return <div dir="rtl" className="min-h-screen bg-[#071a2b] text-white">
+    <div className="border-b border-white/10 bg-[#0b2236] px-4 py-2 text-center text-[11px] text-white/55">تصنيع سعودي حسب الطلب • تصميم، تصنيع وتنفيذ داخل المملكة</div>
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#071a2b]/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 lg:px-6">
         <Link to="/store" className="shrink-0">
           <div className="text-lg font-black tracking-wide">مصنع المقرن</div>
-          <div className="text-[9px] tracking-[.18em] text-[#c9a66b]">للأثاث والديكور</div>
+          <div className="text-[9px] tracking-[.18em] text-[#c5cbd1]">للأثاث والديكور</div>
         </Link>
         <nav className="hidden flex-1 items-center justify-center gap-5 text-xs font-semibold text-white/55 xl:flex">{nav.map(([label,to]) => <a key={to} href={to} className="whitespace-nowrap transition hover:text-white">{label}</a>)}</nav>
         <div className="flex gap-2">
@@ -31,6 +31,6 @@ function StoreLayout() {
       <div className="overflow-x-auto border-t border-white/5 px-4 py-2 xl:hidden"><nav className="flex w-max gap-5 text-[11px] font-semibold text-white/55">{nav.map(([label,to]) => <a key={to} href={to} className="hover:text-white">{label}</a>)}</nav></div>
     </header>
     <Outlet />
-    <footer id="contact" className="border-t border-white/10 bg-[#0d1014] text-white"><div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 md:grid-cols-3"><div><div className="text-2xl font-black">مصنع المقرن</div><p className="mt-3 text-sm leading-7 text-white/45">أثاث وديكور يُصمم ويُصنع حسب المساحة والمقاس والخامة، مرتبط مباشرة بمنصة إدارة المصنع.</p></div><div><b className="text-white/80">تواصل معنا</b><div className="mt-3 space-y-2 text-sm text-white/45"><a className="block" href="tel:0502227034">0502227034</a><a className="block" href="mailto:Almuqrin.f.f@gmail.com">Almuqrin.f.f@gmail.com</a><div>الرياض – حي السلي – شارع طريب</div></div></div><div><b className="text-white/80">سياسة السعر</b><p className="mt-3 text-sm leading-7 text-white/45">السعر المنشور هو سعر المتجر المعتمد. أي تعديل في المقاس أو الخامة أو الإكسسوارات يعاد تسعيره قبل الاعتماد.</p></div></div></footer>
+    <footer id="contact" className="border-t border-white/10 bg-[#061521] text-white"><div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 md:grid-cols-3"><div><div className="text-2xl font-black">مصنع المقرن</div><p className="mt-3 text-sm leading-7 text-white/45">أثاث وديكور يُصمم ويُصنع حسب المساحة والمقاس والخامة، مرتبط مباشرة بمنصة إدارة المصنع.</p></div><div><b className="text-white/80">تواصل معنا</b><div className="mt-3 space-y-2 text-sm text-white/45"><a className="block" href="tel:0502227034">0502227034</a><a className="block" href="mailto:Almuqrin.f.f@gmail.com">Almuqrin.f.f@gmail.com</a><div>الرياض – حي السلي – شارع طريب</div></div></div><div><b className="text-white/80">سياسة السعر</b><p className="mt-3 text-sm leading-7 text-white/45">السعر المنشور هو سعر المتجر المعتمد. أي تعديل في المقاس أو الخامة أو الإكسسوارات يعاد تسعيره قبل الاعتماد.</p></div></div></footer>
   </div>;
 }
