@@ -57,6 +57,22 @@ const MANAGER_ROLES = [
   "accountant",
 ] as const;
 const SALES_ROLES = [...MANAGER_ROLES, "sales_employee"] as const;
+const PRODUCTION_ROLES = [
+  "super_admin",
+  "factory_owner",
+  "general_manager",
+  "production_manager",
+  "quality_manager",
+] as const;
+const PRODUCTION_STAGE_ROLES = [...PRODUCTION_ROLES, "technician"] as const;
+const DELIVERY_ROLES = [
+  "super_admin",
+  "factory_owner",
+  "general_manager",
+  "sales_manager",
+  "warehouse_manager",
+  "project_manager",
+] as const;
 
 type Ctx = { supabase: any; userId: string };
 
@@ -97,13 +113,19 @@ async function nextNumber(companyId: string, docType: string, prefix: string) {
   return data as string;
 }
 
+function rpcObject(data: unknown, missing: string): Record<string, unknown> {
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error(missing);
+  return data as Record<string, unknown>;
+}
+
 /* ---------------- Company ---------------- */
 
 export const getMyCompany = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const companyId = await companyOf(context as Ctx);
-    const { data, error } = await (context as Ctx).supabase
+    const c = context as Ctx;
+    const companyId = await companyOf(c);
+    const { data, error } = await c.supabase
       .from("companies")
       .select("*")
       .eq("id", companyId)
@@ -195,14 +217,12 @@ export const listQuotations = createServerFn({ method: "GET" })
 export const createQuotation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        customer_id: z.string().uuid(),
-        valid_until: z.string().optional().nullable(),
-        notes: z.string().trim().max(1000).optional().nullable(),
-        items: z.array(lineSchema).min(1).max(200),
-      })
-      .parse(input),
+    z.object({
+      customer_id: z.string().uuid(),
+      valid_until: z.string().optional().nullable(),
+      notes: z.string().trim().max(1000).optional().nullable(),
+      items: z.array(lineSchema).min(1).max(200),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
@@ -216,6 +236,7 @@ export const createQuotation = createServerFn({ method: "POST" })
       .maybeSingle();
     if (customerError) throw new Error(customerError.message);
     if (!customer) throw new Error("CUSTOMER_NOT_IN_COMPANY");
+
     const t = totals(data.items);
     const quote_number = await nextNumber(companyId, "quotation", "QT");
     const { data: quote, error } = await c.supabase
@@ -235,6 +256,7 @@ export const createQuotation = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+
     const { error: itemsError } = await c.supabase
       .from("quotation_items")
       .insert(t.rows.map((r) => ({ ...r, quotation_id: quote.id })));
@@ -253,12 +275,10 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 export const setQuotationStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        id: z.string().uuid(),
-        status: z.enum(["draft", "sent", "accepted", "rejected", "expired"]),
-      })
-      .parse(input),
+    z.object({
+      id: z.string().uuid(),
+      status: z.enum(["draft", "sent", "accepted", "rejected", "expired"]),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
@@ -274,10 +294,7 @@ export const setQuotationStatus = createServerFn({ method: "POST" })
     if (!(ALLOWED_TRANSITIONS[current.status] ?? []).includes(data.status)) {
       throw new Error(`INVALID_TRANSITION:${current.status}->${data.status}`);
     }
-    const { error } = await c.supabase
-      .from("quotations")
-      .update({ status: data.status })
-      .eq("id", data.id);
+    const { error } = await c.supabase.from("quotations").update({ status: data.status }).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -295,11 +312,7 @@ export const getQuotation = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!quote) throw new Error("QUOTATION_NOT_FOUND");
     const companyId = await companyOf(c);
-    const { data: company } = await c.supabase
-      .from("companies")
-      .select("*")
-      .eq("id", companyId)
-      .maybeSingle();
+    const { data: company } = await c.supabase.from("companies").select("*").eq("id", companyId).maybeSingle();
     const { data: audit } = await c.supabase
       .from("audit_logs")
       .select("action, details, created_at")
@@ -323,12 +336,6 @@ export const listSalesOrders = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
-const DEFAULT_SCHEDULE = [
-  { sequence: 1, label_ar: "دفعة عند التوقيع", label_en: "On signature", percentage: 50, trigger_stage: "on_signature" },
-  { sequence: 2, label_ar: "دفعة عند إنجاز 50% من التصنيع", label_en: "At 50% production", percentage: 30, trigger_stage: "production_50" },
-  { sequence: 3, label_ar: "دفعة قبل/عند التسليم", label_en: "Before delivery", percentage: 20, trigger_stage: "before_delivery" },
-] as const;
-
 export const convertQuotationToOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -337,81 +344,19 @@ export const convertQuotationToOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
     await requireRole(c, SALES_ROLES);
-    const companyId = await companyOf(c);
-    const { data: quote, error } = await c.supabase
-      .from("quotations")
-      .select("*, quotation_items(*)")
-      .eq("id", data.quotation_id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!quote) throw new Error("QUOTATION_NOT_FOUND");
-    if (quote.status !== "accepted") throw new Error("QUOTATION_NOT_ACCEPTED");
-
-    const { data: existing } = await c.supabase
-      .from("sales_orders")
-      .select("id, order_number")
-      .eq("quotation_id", quote.id)
-      .maybeSingle();
-    if (existing) throw new Error("ORDER_ALREADY_EXISTS");
-
-    const order_number = await nextNumber(companyId, "sales_order", "SO");
-    const { data: order, error: orderError } = await c.supabase
-      .from("sales_orders")
-      .insert({
-        company_id: companyId,
-        customer_id: quote.customer_id,
-        quotation_id: quote.id,
-        order_number,
-        status: "confirmed",
-        delivery_date: data.delivery_date || null,
-        subtotal: quote.subtotal,
-        discount_total: quote.discount_total ?? 0,
-        vat_amount: quote.vat_amount,
-        total: quote.total,
-        created_by: c.userId,
-      })
-      .select("id")
-      .single();
-    if (orderError) {
-      if (orderError.code === "23505") throw new Error("ORDER_ALREADY_EXISTS");
-      throw new Error(orderError.message);
+    const { data: result, error } = await c.supabase.rpc("workflow_convert_quotation_to_order", {
+      p_quotation_id: data.quotation_id,
+      p_delivery_date: data.delivery_date || null,
+    });
+    if (error) {
+      if (String(error.message).includes("ORDER_ALREADY_EXISTS")) throw new Error("ORDER_ALREADY_EXISTS");
+      if (String(error.message).includes("QUOTATION_NOT_ACCEPTED")) throw new Error("QUOTATION_NOT_ACCEPTED");
+      if (String(error.message).includes("QUOTATION_NOT_FOUND")) throw new Error("QUOTATION_NOT_FOUND");
+      if (String(error.message).includes("FORBIDDEN_ROLE")) throw new Error("FORBIDDEN_ROLE");
+      throw new Error(error.message);
     }
-
-    const items = (quote.quotation_items ?? []).map((i: any) => ({
-      sales_order_id: order.id,
-      description: i.description,
-      unit: i.unit ?? "قطعة",
-      quantity: i.quantity,
-      unit_price: i.unit_price,
-      discount_percent: i.discount_percent ?? 0,
-      discount_amount: i.discount_amount ?? 0,
-      taxable_amount: i.taxable_amount ?? 0,
-      vat_rate: i.vat_rate,
-      vat_amount: i.vat_amount ?? 0,
-      line_total: i.line_total,
-    }));
-    if (items.length) {
-      const { error: itemsError } = await c.supabase.from("sales_order_items").insert(items);
-      if (itemsError) throw new Error(itemsError.message);
-    }
-
-    const total = Number(quote.total);
-    const { error: scheduleError } = await c.supabase.from("payment_schedules").insert(
-      DEFAULT_SCHEDULE.map((p) => ({
-        company_id: companyId,
-        sales_order_id: order.id,
-        sequence: p.sequence,
-        label_ar: p.label_ar,
-        label_en: p.label_en,
-        percentage: p.percentage,
-        amount: round((total * p.percentage) / 100),
-        trigger_stage: p.trigger_stage,
-        created_by: c.userId,
-      })),
-    );
-    if (scheduleError) throw new Error(scheduleError.message);
-
-    return { id: order.id, order_number };
+    const row = rpcObject(result, "ORDER_RPC_INVALID_RESPONSE");
+    return { id: String(row.id), order_number: String(row.order_number) };
   });
 
 export const listPaymentSchedule = createServerFn({ method: "GET" })
@@ -431,27 +376,19 @@ export const listPaymentSchedule = createServerFn({ method: "GET" })
 export const savePaymentSchedule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        sales_order_id: z.string().uuid(),
-        installments: z
-          .array(
-            z.object({
-              label_ar: z.string().trim().min(2).max(120),
-              label_en: z.string().trim().min(2).max(120),
-              percentage: z.number().positive().max(100),
-              trigger_stage: z.enum(["on_signature", "production_50", "before_delivery", "custom"]),
-              due_date: z.string().optional().nullable(),
-            }),
-          )
-          .min(1)
-          .max(10),
-      })
-      .refine(
-        (v) => Math.abs(v.installments.reduce((s, i) => s + i.percentage, 0) - 100) < 0.01,
-        "SCHEDULE_MUST_TOTAL_100",
-      )
-      .parse(input),
+    z.object({
+      sales_order_id: z.string().uuid(),
+      installments: z.array(z.object({
+        label_ar: z.string().trim().min(2).max(120),
+        label_en: z.string().trim().min(2).max(120),
+        percentage: z.number().positive().max(100),
+        trigger_stage: z.enum(["on_signature", "production_50", "before_delivery", "custom"]),
+        due_date: z.string().optional().nullable(),
+      })).min(1).max(10),
+    }).refine(
+      (v) => Math.abs(v.installments.reduce((s, i) => s + i.percentage, 0) - 100) < 0.01,
+      "SCHEDULE_MUST_TOTAL_100",
+    ).parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
@@ -465,12 +402,8 @@ export const savePaymentSchedule = createServerFn({ method: "POST" })
     if (orderError) throw new Error(orderError.message);
     if (!order) throw new Error("ORDER_NOT_FOUND");
 
-    const { error: delError } = await c.supabase
-      .from("payment_schedules")
-      .delete()
-      .eq("sales_order_id", order.id);
+    const { error: delError } = await c.supabase.from("payment_schedules").delete().eq("sales_order_id", order.id);
     if (delError) throw new Error(delError.message);
-
     const total = Number(order.total);
     const { error } = await c.supabase.from("payment_schedules").insert(
       data.installments.map((i, idx) => ({
@@ -487,7 +420,6 @@ export const savePaymentSchedule = createServerFn({ method: "POST" })
       })),
     );
     if (error) throw new Error(error.message);
-
     await c.supabase.from("audit_logs").insert({
       company_id: companyId,
       user_id: c.userId,
@@ -502,16 +434,14 @@ export const savePaymentSchedule = createServerFn({ method: "POST" })
 export const recordPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        sales_order_id: z.string().uuid(),
-        amount: z.number().positive().max(100_000_000),
-        method: z.string().trim().max(40).default("bank_transfer"),
-        reference: z.string().trim().max(80).optional().nullable(),
-        paid_at: z.string().optional().nullable(),
-        note: z.string().trim().max(300).optional().nullable(),
-      })
-      .parse(input),
+    z.object({
+      sales_order_id: z.string().uuid(),
+      amount: z.number().positive().max(100_000_000),
+      method: z.string().trim().max(40).default("bank_transfer"),
+      reference: z.string().trim().max(80).optional().nullable(),
+      paid_at: z.string().optional().nullable(),
+      note: z.string().trim().max(300).optional().nullable(),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
@@ -529,11 +459,7 @@ export const recordPayment = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    // allocate the payment across the schedule, oldest unpaid first
-    const { data: paidRows } = await c.supabase
-      .from("payments")
-      .select("amount")
-      .eq("sales_order_id", data.sales_order_id);
+    const { data: paidRows } = await c.supabase.from("payments").select("amount").eq("sales_order_id", data.sales_order_id);
     let remaining = (paidRows ?? []).reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
     const { data: schedule } = await c.supabase
       .from("payment_schedules")
@@ -544,19 +470,13 @@ export const recordPayment = createServerFn({ method: "POST" })
       const due = Number(inst.amount);
       const status = remaining >= due - 0.01 ? "paid" : remaining > 0 ? "partial" : "pending";
       remaining = Math.max(0, remaining - due);
-      await c.supabase.from("payment_schedules").update({ status }).eq("id", inst.id);
+      const { error: updateError } = await c.supabase.from("payment_schedules").update({ status }).eq("id", inst.id);
+      if (updateError) throw new Error(updateError.message);
     }
     return { ok: true };
   });
 
 /* ---------------- Production & QC ---------------- */
-
-const DEFAULT_STAGES = [
-  { name_ar: "التجهيز والقص", name_en: "Cutting & preparation" },
-  { name_ar: "التجميع", name_en: "Assembly" },
-  { name_ar: "الدهان والتشطيب", name_en: "Finishing" },
-  { name_ar: "فحص الجودة النهائي", name_en: "Final quality check" },
-];
 
 export const listProductionOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -573,54 +493,42 @@ export const listProductionOrders = createServerFn({ method: "GET" })
 export const createProductionOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        sales_order_id: z.string().uuid(),
-        due_date: z.string().optional().nullable(),
-        notes: z.string().trim().max(500).optional().nullable(),
-      })
-      .parse(input),
+    z.object({
+      sales_order_id: z.string().uuid(),
+      due_date: z.string().optional().nullable(),
+      notes: z.string().trim().max(500).optional().nullable(),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
-    const companyId = await companyOf(c);
-    const po_number = await nextNumber(companyId, "production_order", "PO");
-    const { data: po, error } = await c.supabase
-      .from("production_orders")
-      .insert({
-        company_id: companyId,
-        sales_order_id: data.sales_order_id,
-        po_number,
-        status: "planned",
-        start_date: new Date().toISOString().slice(0, 10),
-        due_date: data.due_date || null,
-        notes: data.notes || null,
-        created_by: c.userId,
-      })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    const { error: stageError } = await c.supabase.from("production_stages").insert(
-      DEFAULT_STAGES.map((s, idx) => ({ ...s, production_order_id: po.id, sequence: idx + 1 })),
-    );
-    if (stageError) throw new Error(stageError.message);
-    await c.supabase.from("sales_orders").update({ status: "in_production" }).eq("id", data.sales_order_id);
-    return { id: po.id, po_number };
+    await requireRole(c, PRODUCTION_ROLES);
+    const { data: result, error } = await c.supabase.rpc("workflow_create_production_order", {
+      p_sales_order_id: data.sales_order_id,
+      p_due_date: data.due_date || null,
+      p_notes: data.notes || null,
+    });
+    if (error) {
+      if (String(error.message).includes("PRODUCTION_ORDER_ALREADY_EXISTS")) throw new Error("PRODUCTION_ORDER_ALREADY_EXISTS");
+      if (String(error.message).includes("ORDER_NOT_FOUND")) throw new Error("ORDER_NOT_FOUND");
+      if (String(error.message).includes("FORBIDDEN_ROLE")) throw new Error("FORBIDDEN_ROLE");
+      throw new Error(error.message);
+    }
+    const row = rpcObject(result, "PRODUCTION_RPC_INVALID_RESPONSE");
+    return { id: String(row.id), po_number: String(row.po_number) };
   });
 
 export const updateProductionStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        id: z.string().uuid(),
-        status: z.enum(["pending", "in_progress", "passed", "failed"]),
-        qc_notes: z.string().trim().max(500).optional().nullable(),
-      })
-      .parse(input),
+    z.object({
+      id: z.string().uuid(),
+      status: z.enum(["pending", "in_progress", "passed", "failed"]),
+      qc_notes: z.string().trim().max(500).optional().nullable(),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
+    await requireRole(c, PRODUCTION_STAGE_ROLES);
     const { data: stage, error } = await c.supabase
       .from("production_stages")
       .update({
@@ -634,10 +542,11 @@ export const updateProductionStage = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { data: siblings } = await c.supabase
+    const { data: siblings, error: siblingsError } = await c.supabase
       .from("production_stages")
       .select("status")
       .eq("production_order_id", stage.production_order_id);
+    if (siblingsError) throw new Error(siblingsError.message);
     const all = (siblings ?? []) as { status: string }[];
     const nextStatus = all.every((s) => s.status === "passed")
       ? "completed"
@@ -646,19 +555,22 @@ export const updateProductionStage = createServerFn({ method: "POST" })
         : all.some((s) => s.status !== "pending")
           ? "in_progress"
           : "planned";
-    await c.supabase
+    const { error: poStatusError } = await c.supabase
       .from("production_orders")
       .update({ status: nextStatus })
       .eq("id", stage.production_order_id);
+    if (poStatusError) throw new Error(poStatusError.message);
 
     if (nextStatus === "completed") {
-      const { data: po } = await c.supabase
+      const { data: po, error: poError } = await c.supabase
         .from("production_orders")
         .select("sales_order_id")
         .eq("id", stage.production_order_id)
         .maybeSingle();
+      if (poError) throw new Error(poError.message);
       if (po?.sales_order_id) {
-        await c.supabase.from("sales_orders").update({ status: "ready" }).eq("id", po.sales_order_id);
+        const { error: readyError } = await c.supabase.from("sales_orders").update({ status: "ready" }).eq("id", po.sales_order_id);
+        if (readyError) throw new Error(readyError.message);
       }
     }
     return { ok: true, productionStatus: nextStatus };
@@ -683,6 +595,7 @@ export const issueInvoiceForOrder = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ sales_order_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
+    await requireRole(c, MANAGER_ROLES);
     const companyId = await companyOf(c);
 
     const { data: company, error: companyError } = await c.supabase
@@ -696,19 +609,11 @@ export const issueInvoiceForOrder = createServerFn({ method: "POST" })
     const missing: string[] = [];
     if (!company.name_ar?.trim()) missing.push("name_ar");
     if (!/^[0-9]{15}$/.test((company.vat_number ?? "").trim())) missing.push("vat_number");
-    for (const f of [
-      "address_building_no",
-      "address_street",
-      "address_district",
-      "address_city",
-    ] as const) {
+    for (const f of ["address_building_no", "address_street", "address_district", "address_city"] as const) {
       if (!String(company[f] ?? "").trim()) missing.push(f);
     }
-    if (!/^[0-9]{5}$/.test((company.address_postal_code ?? "").trim()))
-      missing.push("address_postal_code");
-    if (missing.length) {
-      throw new Error(`COMPANY_DATA_INCOMPLETE:${missing.join(",")}`);
-    }
+    if (!/^[0-9]{5}$/.test((company.address_postal_code ?? "").trim())) missing.push("address_postal_code");
+    if (missing.length) throw new Error(`COMPANY_DATA_INCOMPLETE:${missing.join(",")}`);
 
     const { data: order, error: orderError } = await c.supabase
       .from("sales_orders")
@@ -718,11 +623,12 @@ export const issueInvoiceForOrder = createServerFn({ method: "POST" })
     if (orderError) throw new Error(orderError.message);
     if (!order) throw new Error("ORDER_NOT_FOUND");
 
-    const { data: existing } = await c.supabase
+    const { data: existing, error: existingError } = await c.supabase
       .from("invoices")
       .select("id")
       .eq("sales_order_id", order.id)
       .maybeSingle();
+    if (existingError) throw new Error(existingError.message);
     if (existing) throw new Error("INVOICE_ALREADY_EXISTS");
 
     const issuedAt = new Date().toISOString();
@@ -762,16 +668,19 @@ export const issueInvoiceForOrder = createServerFn({ method: "POST" })
       vat_rate: i.vat_rate,
       line_total: i.line_total,
     }));
-    if (items.length) await c.supabase.from("invoice_items").insert(items);
+    if (items.length) {
+      const { error: itemError } = await c.supabase.from("invoice_items").insert(items);
+      if (itemError) throw new Error(itemError.message);
+    }
 
-    await c.supabase.from("audit_logs").insert({
+    const { error: auditError } = await c.supabase.from("audit_logs").insert({
       company_id: companyId,
       user_id: c.userId,
       action: "issue_invoice",
       entity: "invoice",
       entity_id: invoice.id,
     });
-
+    if (auditError) throw new Error(auditError.message);
     return { id: invoice.id, invoice_number, qr_tlv: qr };
   });
 
@@ -792,17 +701,16 @@ export const listDeliveryNotes = createServerFn({ method: "GET" })
 export const createDeliveryNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z
-      .object({
-        sales_order_id: z.string().uuid(),
-        received_by: z.string().trim().min(2).max(120),
-        received_id_number: z.string().trim().max(30).optional().nullable(),
-        notes: z.string().trim().max(500).optional().nullable(),
-      })
-      .parse(input),
+    z.object({
+      sales_order_id: z.string().uuid(),
+      received_by: z.string().trim().min(2).max(120),
+      received_id_number: z.string().trim().max(30).optional().nullable(),
+      notes: z.string().trim().max(500).optional().nullable(),
+    }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const c = context as Ctx;
+    await requireRole(c, DELIVERY_ROLES);
     const companyId = await companyOf(c);
     const { data: order, error } = await c.supabase
       .from("sales_orders")
@@ -812,11 +720,12 @@ export const createDeliveryNote = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!order) throw new Error("ORDER_NOT_FOUND");
 
-    const { data: invoice } = await c.supabase
+    const { data: invoice, error: invoiceError } = await c.supabase
       .from("invoices")
       .select("id, status")
       .eq("sales_order_id", order.id)
       .maybeSingle();
+    if (invoiceError) throw new Error(invoiceError.message);
     if (!invoice || invoice.status === "draft") throw new Error("INVOICE_REQUIRED_BEFORE_DELIVERY");
 
     const { data: mos, error: moError } = await c.supabase
@@ -854,13 +763,18 @@ export const createDeliveryNote = createServerFn({ method: "POST" })
       description: i.description,
       quantity: i.quantity,
     }));
-    if (items.length) await c.supabase.from("delivery_note_items").insert(items);
+    if (items.length) {
+      const { error: itemError } = await c.supabase.from("delivery_note_items").insert(items);
+      if (itemError) throw new Error(itemError.message);
+    }
 
     for (const m of openMos) {
       if (m.status === "ready_for_delivery") {
-        await c.supabase.from("manufacturing_orders").update({ status: "delivered" }).eq("id", m.id);
+        const { error: deliveredError } = await c.supabase.from("manufacturing_orders").update({ status: "delivered" }).eq("id", m.id);
+        if (deliveredError) throw new Error(deliveredError.message);
       }
     }
-    await c.supabase.from("sales_orders").update({ status: "delivered" }).eq("id", order.id);
+    const { error: orderStatusError } = await c.supabase.from("sales_orders").update({ status: "delivered" }).eq("id", order.id);
+    if (orderStatusError) throw new Error(orderStatusError.message);
     return { id: note.id, dn_number };
   });
