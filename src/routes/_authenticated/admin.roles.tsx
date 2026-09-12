@@ -66,16 +66,16 @@ function RolesPage() {
       setLoading(true);
       setError(null);
       const [profilesRes, rolesRes, permissionsRes] = await Promise.all([
-        (supabase as any)
+        supabase
           .from("profiles")
           .select("id,full_name,email,is_active")
           .eq("company_id", user.companyId)
           .order("full_name"),
-        (supabase as any)
+        supabase
           .from("user_roles")
           .select("user_id,role")
           .eq("company_id", user.companyId),
-        (supabase as any)
+        supabase
           .from("role_module_permissions")
           .select("role,can_view")
           .eq("company_id", user.companyId),
