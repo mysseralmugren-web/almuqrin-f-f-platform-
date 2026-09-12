@@ -45,7 +45,7 @@ export const MODULES: ModuleDef[] = [
   { key: "erp", path: "/erp", labelAr: "تخطيط الموارد ERP", labelEn: "ERP", icon: Boxes, group: "operations" },
   { key: "mes", path: "/mes", labelAr: "التصنيع MES", labelEn: "Manufacturing", icon: Factory, group: "operations" },
   { key: "wms", path: "/wms", labelAr: "المستودعات WMS", labelEn: "Warehouse", icon: Warehouse, group: "operations" },
-  { key: "inventory", path: "/inventory", labelAr: "المخزون", labelEn: "Inventory", icon: Package, group: "operations" },
+  { key: "inventory", path: "/inventory", labelAr: "الجرد والمخزون", labelEn: "Inventory Count", icon: Package, group: "operations" },
   { key: "projects", path: "/projects", labelAr: "المشاريع والتركيب", labelEn: "Projects & Installation", icon: ClipboardList, group: "operations" },
   { key: "purchasing", path: "/purchasing", labelAr: "المشتريات", labelEn: "Purchasing", icon: ShoppingCart, group: "commercial" },
   { key: "sales", path: "/sales", labelAr: "المبيعات", labelEn: "Sales", icon: TrendingUp, group: "commercial" },
